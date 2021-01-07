@@ -103,7 +103,7 @@ class IKConstraintsHelper extends  LineSegments
         {
             const bone = bones[i];
             const constraint = constraints[i];
-            if (bone.parent && bone.parent.isBone)// && constraint)
+            if (bone.parent && bone.parent.isBone)
             {
                 _boneMatrix.multiplyMatrices(_matrixWorldInv, bone.parent.matrixWorld);
                 _parentPosition.setFromMatrixPosition(_boneMatrix);
@@ -113,7 +113,7 @@ class IKConstraintsHelper extends  LineSegments
                 position.setXYZ(j, _upVector.x, _upVector.y, _upVector.z);
                 _childPosition.copy(_upVector);
 
-                //
+                // TODO view limitation axis
                 _boneMatrix.decompose(_position, _quaternion, _scale);
                 _upVector.subVectors(_parentPosition, _upVector);
                 _upVector.applyQuaternion(_quaternion);

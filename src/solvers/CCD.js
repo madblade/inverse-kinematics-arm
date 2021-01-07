@@ -100,6 +100,7 @@ CCD.prototype.solve = function(
 
             if (limitation !== undefined) {
                 // TODO reconsider limitation specification
+                console.log('limiting');
                 let c = link.quaternion.w;
                 if (c > 1.0) c = 1.0;
                 let c2 = math.sqrt(1 - c * c);

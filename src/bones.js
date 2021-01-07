@@ -27,14 +27,23 @@ function createExample(scene, state)
         halfHeight
     };
 
+    //links — An array of [page: Object] specifying link bones.
+    // index — Link bone.
+    // limitation — (optional) Rotation axis. Default is undefined.
+    // rotationMin — (optional) Rotation minimum limit. Default is undefined.
+    // rotationMax — (optional) Rotation maximum limit. Default is undefined.
+    // enabled — (optional) Default is true.
     let constraints = {
         effector: 4,
         links: [
-            { id: 3, limitation: new Vector3( 1, 0, 0 ) },
+            { id: 3, limitation: new Vector3( 0, 0, 1 ) },
             // { id: 3 },
             { id: 2 },
             { id: 1 },
-            { id: 0 }
+            { id: 0 },
+            // { id: 2, limitation: new Vector3( 1, 0, 0 ) },
+            // { id: 1, limitation: new Vector3( 0, 0, 1 ) },
+            // { id: 0, limitation: new Vector3( 1, 0, 0 )}
         ],
         minAngle: 0.0,
         maxAngle: 1.0,
