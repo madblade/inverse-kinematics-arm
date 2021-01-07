@@ -65,8 +65,8 @@ function createSkinnedMesh(sizing)
         skinIndices.push(skinIndex, skinIndex + 1, 0, 0);
         skinWeights.push(1 - skinWeight, skinWeight, 0, 0);
     }
-    skinnedMeshGeometry.addAttribute('skinIndex', new Uint16BufferAttribute(skinIndices, 4));
-    skinnedMeshGeometry.addAttribute('skinWeight', new Float32BufferAttribute(skinWeights, 4));
+    skinnedMeshGeometry.setAttribute('skinIndex', new Uint16BufferAttribute(skinIndices, 4));
+    skinnedMeshGeometry.setAttribute('skinWeight', new Float32BufferAttribute(skinWeights, 4));
 
     let skinnedMeshMaterial = new MeshPhongMaterial({
         skinning: true,
