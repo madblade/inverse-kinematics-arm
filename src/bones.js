@@ -1,15 +1,15 @@
 import {
+    ArrowHelper,
     Bone,
     CylinderBufferGeometry, DoubleSide,
     Float32BufferAttribute,
-    MeshPhongMaterial, Skeleton, SkeletonHelper, SkinnedMesh,
+    MeshPhongMaterial, PlaneHelper, Skeleton, SkeletonHelper, SkinnedMesh,
     Uint16BufferAttribute,
     Vector3
 } from 'three';
 import { GUI }              from 'three/examples/jsm/libs/dat.gui.module';
 
-let gui = new GUI();
-let mesh;
+let gui;
 let skeleton;
 let boneLength = 5;
 
@@ -26,20 +26,60 @@ function createExample(scene, state)
         halfHeight
     };
 
+    let constraints = {
+        effector: 4,
+        links: [
+            { id: 3, limitation: new Vector3( 1, 0, 0 ) },
+            // { id: 3 },
+            { id: 2 },
+            { id: 1 },
+            { id: 0 }
+        ],
+        minAngle: 0.0,
+        maxAngle: 1.0,
+    };
+
     // Skinned mesh
-    createSkinnedMesh(sizing);
+    let mesh = createSkinnedMesh(sizing);
+    scene.add(mesh);
 
     // Bones
-    let m = createBones(sizing);
-    scene.add(m);
+    createBones(sizing, constraints, mesh);
 
     // Skeleton helper
     let skeletonHelper = new SkeletonHelper(mesh);
     skeletonHelper.material.linewidth = 2;
     scene.add(skeletonHelper);
 
+    // Constraints helper
+    createConstraintsHelper(mesh, constraints, scene);
+
     // GUI
-    createGUI(state);
+    createGUI(state, mesh);
+}
+
+function createBones(sizing, constraints, mesh)
+{
+    let bones = [];
+    {
+        let prevBone = new Bone();
+        bones.push(prevBone);
+        prevBone.position.y = -sizing.halfHeight;
+        for (let i = 0; i < sizing.segmentCount; i++) {
+            let bone = new Bone();
+            bone.position.y = sizing.segmentHeight;
+            bones.push(bone);
+            prevBone.add(bone);
+            prevBone = bone;
+        }
+    }
+
+    skeleton = new Skeleton(bones);
+    skeleton.constraints = constraints;
+
+    let rootBone = skeleton.bones[0];
+    mesh.add(rootBone);
+    mesh.bind(skeleton);
 }
 
 function createSkinnedMesh(sizing)
@@ -76,36 +116,35 @@ function createSkinnedMesh(sizing)
         flatShading: true
     });
 
-    mesh = new SkinnedMesh(skinnedMeshGeometry, skinnedMeshMaterial);
+    return new SkinnedMesh(skinnedMeshGeometry, skinnedMeshMaterial);
 }
 
-function createBones(sizing)
+// TODO constraints helper
+function createConstraintsHelper(
+    mesh, constraints, scene
+)
 {
-    let bones = [];
+    let bones = mesh.skeleton.bones;
+    const linkConstraints = constraints.links;
+    const nbConstraints = linkConstraints.length;
+    for (let i = 0; i < nbConstraints; ++i)
     {
-        let prevBone = new Bone();
-        bones.push(prevBone);
-        prevBone.position.y = -sizing.halfHeight;
-        for (let i = 0; i < sizing.segmentCount; i++) {
-            let bone = new Bone();
-            bone.position.y = sizing.segmentHeight;
-            bones.push(bone);
-            prevBone.add(bone);
-            prevBone = bone;
-        }
+        let l = linkConstraints[i];
+        if (l.enabled === false || !l.limitation) continue;
+
+        let link = bones[l.id];
+        let limitation = l.limitation;
+        let p = new ArrowHelper(limitation);
+        console.log(l);
+        console.log(link);
+        // scene.add(p);
     }
-
-    skeleton = new Skeleton(bones);
-    let rootBone = skeleton.bones[0];
-    mesh.add(rootBone);
-
-    mesh.bind(skeleton);
-    return mesh;
 }
 
-function createGUI(state)
+function createGUI(state, mesh)
 {
     // dat.gui helper
+    gui = new GUI();
     let folder = gui.addFolder("General Options");
     let folderIndex = 0;
     folder.add(state, "animateBones");
@@ -114,8 +153,10 @@ function createGUI(state)
     folder.__controllers[folderIndex++].name("Inverse Bones");
     folder.add(mesh, "pose");
     folder.__controllers[folderIndex++].name(".pose()");
+    let skeleton = mesh.skeleton;
     let skeletonBones = skeleton ? skeleton.bones : [];
-    for (let i = 0; i < skeletonBones.length; i++) {
+    for (let i = 0; i < skeletonBones.length; i++)
+    {
         let bone = skeletonBones[i];
         folderIndex = 0;
         folder = gui.addFolder("Bone " + i);

@@ -167,8 +167,10 @@ function updateBonesInverse()
     mouseHelper.position.copy(targetPoint);
 
     //
+
     let chain = skeleton.bones;
-    solver.solve(Solver.CCD, chain, targetPoint, 10, null);
+    let constraints = skeleton.constraints;
+    solver.solve(Solver.CCD, chain, targetPoint, 10, constraints);
 }
 
 // Entry

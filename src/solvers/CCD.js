@@ -8,6 +8,14 @@ import {
 function CCD()
 {
     this.q = new Quaternion();
+    this.targetVec = new Vector3();
+    this.effectorPos = new Vector3();
+    this.effectorVec = new Vector3();
+    this.linkPos = new Vector3();
+    this.invLinkQ = new Quaternion();
+    this.linkScale = new Vector3();
+    this.axis = new Vector3();
+    this.vector = new Vector3();
 }
 
 CCD.prototype.solve = function(
@@ -18,30 +26,21 @@ CCD.prototype.solve = function(
 )
 {
     let bones = chain; // skeleton.bones;
-    let q = new Quaternion();
-    let targetVec = new Vector3();
-    let effectorPos = new Vector3();
-    let effectorVec = new Vector3();
-    let linkPos = new Vector3();
-    let invLinkQ = new Quaternion();
-    let linkScale = new Vector3();
-    let axis = new Vector3();
-    let vector = new Vector3();
+    let nbIterations = iterations !== undefined ? iterations : 1;
 
-    let math = Math; // for reference overhead reduction in loop
-    let ik = {
-        effector: 4,
-        links: [
-            // { id: 3, limitation: new Vector3( 1, 0, 0 ) },
-            { id: 3 },
-            { id: 2 },
-            { id: 1 },
-            { id: 0 }
-        ],
-        // iteration: 10,
-        // minAngle: 0.0,
-        // maxAngle: 1.0,
-    };
+    // perf/don’t reallocate at every pass
+    let q = this.q;
+    let targetVec = this.targetVec;
+    let effectorPos = this.effectorPos;
+    let effectorVec = this.effectorVec;
+    let linkPos = this.linkPos;
+    let invLinkQ = this.invLinkQ;
+    let linkScale = this.linkScale;
+    let axis = this.axis;
+    let vector = this.vector;
+
+    let math = Math; // reference overhead reduction in loop
+    let ik = constraints;
 
     let effector = bones[ik.effector];
     // let target = bones[ik.target];
@@ -50,8 +49,7 @@ CCD.prototype.solve = function(
     // targetPos.setFromMatrixPosition(target.matrixWorld);
     let targetPos = targetPoint;
     let links = ik.links;
-    // let iteration = ik.iteration !== undefined ? ik.iteration : 1;
-    for (let j = 0; j < iterations; j++)
+    for (let j = 0; j < nbIterations; j++)
     {
         let rotated = false;
         for (let k = 0, kl = links.length; k < kl; k++)
@@ -95,7 +93,7 @@ CCD.prototype.solve = function(
             let qq = new Quaternion();
             qq.copy(link.quaternion).multiply(q);
             link.quaternion.multiply(q);
-            // TODO think about this slerp function.
+            // ? think about this slerp function.
             // link.quaternion.slerp(qq, 0.05);
 
             if (limitation !== undefined) {
@@ -106,13 +104,11 @@ CCD.prototype.solve = function(
                 link.quaternion.set(limitation.x * c2, limitation.y * c2, limitation.z * c2, c);
             }
 
-            {
-                // TODO softify at min/max
-                if (rotationMin !== undefined)
-                    link.rotation.setFromVector3(link.rotation.toVector3(vector).max(rotationMin));
-                if (rotationMax !== undefined)
-                    link.rotation.setFromVector3(link.rotation.toVector3(vector).min(rotationMax));
-            }
+            // ? softify at min/max
+            if (rotationMin !== undefined)
+                link.rotation.setFromVector3(link.rotation.toVector3(vector).max(rotationMin));
+            if (rotationMax !== undefined)
+                link.rotation.setFromVector3(link.rotation.toVector3(vector).min(rotationMax));
 
             link.updateMatrixWorld(true);
             rotated = true;
