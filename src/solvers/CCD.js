@@ -32,14 +32,15 @@ CCD.prototype.solve = function(
     let ik = {
         effector: 4,
         links: [
-            { id: 3, limitation: new Vector3( 1, 0, 0 ) },
+            // { id: 3, limitation: new Vector3( 1, 0, 0 ) },
+            { id: 3 },
             { id: 2 },
             { id: 1 },
             { id: 0 }
         ],
         // iteration: 10,
-        minAngle: 0.0,
-        maxAngle: 1.0,
+        // minAngle: 0.0,
+        // maxAngle: 1.0,
     };
 
     let effector = bones[ik.effector];
