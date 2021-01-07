@@ -6,8 +6,9 @@ import {
     MeshPhongMaterial, PlaneHelper, Skeleton, SkeletonHelper, SkinnedMesh,
     Uint16BufferAttribute,
     Vector3
-} from 'three';
-import { GUI }              from 'three/examples/jsm/libs/dat.gui.module';
+}                              from 'three';
+import { GUI }                 from 'three/examples/jsm/libs/dat.gui.module';
+import { IKConstraintsHelper } from './helpers/IKConstraintsHelper';
 
 let gui;
 let skeleton;
@@ -124,21 +125,8 @@ function createConstraintsHelper(
     mesh, constraints, scene
 )
 {
-    let bones = mesh.skeleton.bones;
-    const linkConstraints = constraints.links;
-    const nbConstraints = linkConstraints.length;
-    for (let i = 0; i < nbConstraints; ++i)
-    {
-        let l = linkConstraints[i];
-        if (l.enabled === false || !l.limitation) continue;
-
-        let link = bones[l.id];
-        let limitation = l.limitation;
-        let p = new ArrowHelper(limitation);
-        console.log(l);
-        console.log(link);
-        // scene.add(p);
-    }
+    let constraintsHelper = new IKConstraintsHelper(mesh, constraints);
+    scene.add(constraintsHelper);
 }
 
 function createGUI(state, mesh)

@@ -1,5 +1,7 @@
 
 // ref https://github.com/mrdoob/three.js/blob/master/examples/jsm/animation/CCDIKSolver.js
+// http://number-none.com/product/IK%20with%20Quaternion%20Joint%20Limits/index.html
+// https://iquilezles.org/www/articles/noacos/noacos.htm
 
 import {
     Quaternion, Vector3
