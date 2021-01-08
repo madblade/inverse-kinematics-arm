@@ -153,7 +153,6 @@ class IKConstraintsHelper extends LineSegments
                 plane1.position.copy(_upVector).addScaledVector(_localLimitation, -0.2);
                 plane2.position.copy(_upVector).addScaledVector(_localLimitation, 0.2);
 
-                // TODO view limitation axis
                 // get joint orientation
                 _quaternionConstraint.copy(_quaternion).conjugate();
                 _boneMatrix.decompose(_position, _quaternion, _scale);
@@ -163,6 +162,31 @@ class IKConstraintsHelper extends LineSegments
                 _upVector
                     .applyQuaternion(_quaternionConstraint)
                     .applyQuaternion(_quaternion);
+                _upVector.normalize();
+
+                position.setXYZ(j + 1,
+                    _childPosition.x + _upVector.x,
+                    _childPosition.y + _upVector.y,
+                    _childPosition.z + _upVector.z);
+
+                j += 2;
+            }
+            else if (bone.parent && bone.parent.isBone)
+            {
+                _boneMatrix.multiplyMatrices(_matrixWorldInv, bone.parent.matrixWorld);
+                _parentPosition.setFromMatrixPosition(_boneMatrix);
+
+                _boneMatrix.decompose(_position, _quaternion, _scale);
+                _boneMatrix.multiplyMatrices(_matrixWorldInv, bone.matrixWorld);
+                _upVector.setFromMatrixPosition(_boneMatrix);
+                position.setXYZ(j, _upVector.x, _upVector.y, _upVector.z);
+                _childPosition.copy(_upVector);
+
+                _quaternionConstraint.copy(_quaternion).conjugate(); // parent quaternion
+                _boneMatrix.decompose(_position, _quaternion, _scale);
+                _upVector.subVectors(_parentPosition, _upVector);
+                _upVector.normalize();
+                _upVector.applyQuaternion(_quaternion);
                 _upVector.normalize();
 
                 position.setXYZ(j + 1,

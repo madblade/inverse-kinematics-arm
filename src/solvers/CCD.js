@@ -75,7 +75,7 @@ CCD.prototype.solve = function(
             effectorPos.setFromMatrixPosition(effector.matrixWorld);
 
             // Check distance from target
-            // TODO check flops
+            // TODO compute flops
             let distance = effectorPos.distanceTo(targetPoint);
             if (distance < SMALL_DISTANCE) break;
 
@@ -126,6 +126,6 @@ CCD.prototype.solve = function(
 
         if (!rotated) break;
     }
-}
+};
 
 export { CCD };
