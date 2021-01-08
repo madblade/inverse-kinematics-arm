@@ -20,6 +20,9 @@ function CCD()
     this.vector = new Vector3();
 }
 
+const SMALL_ANGLE = 1e-5;
+const SMALL_DISTANCE = 1e-5;
+
 CCD.prototype.solve = function(
     chain,
     targetPoint,
@@ -71,6 +74,11 @@ CCD.prototype.solve = function(
             invLinkQ.invert();
             effectorPos.setFromMatrixPosition(effector.matrixWorld);
 
+            // Check distance from target
+            // TODO check flops
+            let distance = effectorPos.distanceTo(targetPoint);
+            if (distance < SMALL_DISTANCE) break;
+
             // Work in link world.
             effectorVec.subVectors(effectorPos, linkPos);
             effectorVec.applyQuaternion(invLinkQ);
@@ -84,7 +92,7 @@ CCD.prototype.solve = function(
             angle = math.acos(angle);
 
             // Skip if changing angle is too small to prevent bone vibration.
-            if (angle < 1e-5) continue;
+            if (angle < SMALL_ANGLE) continue;
             if (ik.minAngle !== undefined && angle < ik.minAngle) angle = ik.minAngle;
             if (ik.maxAngle !== undefined && angle > ik.maxAngle) angle = ik.maxAngle;
             axis.crossVectors(effectorVec, targetVec);
@@ -100,7 +108,6 @@ CCD.prototype.solve = function(
 
             if (limitation !== undefined) {
                 // TODO reconsider limitation specification
-                console.log('limiting');
                 let c = link.quaternion.w;
                 if (c > 1.0) c = 1.0;
                 let c2 = math.sqrt(1 - c * c);
