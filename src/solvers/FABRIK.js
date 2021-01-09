@@ -108,6 +108,21 @@ const BaseboneConstraintType3D = {
     GLOBAL_ROTOR: 4,
 }
 
+// chain: contains bones (usually from base to effector)
+//      [0] -> base bone (~Object3D)
+//      [0-1] -> bone segment No. 1
+//      ...
+//      [l-1] -> last bone (= effector)
+// constraints: object specifying constraints
+//      effector: id
+//      links: array of bone constraints (usually from effector to base)
+//          id: index of bone
+//          limitation: Vector3, HINGE joint rotation axis
+//          rotationMin: Vector3, BALL local Euler rotation min
+//          rotationMax: Vector4, BALL local Euler rotation max
+//      minAngle: min step angle
+//      maxAngle: max step angle
+
 // ---------- Forward pass from end effector to base -----------
 FABRIK.prototype.forward = function(
     targetPoint,

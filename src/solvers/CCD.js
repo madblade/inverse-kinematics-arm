@@ -33,17 +33,6 @@ CCD.prototype.solve = function(
     let bones = chain; // skeleton.bones;
     let nbIterations = iterations !== undefined ? iterations : 1;
 
-    // perf/don’t reallocate at every pass
-    let q = this.q;
-    let targetVec = this.targetVec;
-    let effectorPos = this.effectorPos;
-    let effectorVec = this.effectorVec;
-    let linkPos = this.linkPos;
-    let invLinkQ = this.invLinkQ;
-    let linkScale = this.linkScale;
-    let axis = this.axis;
-    let vector = this.vector;
-
     let ik = constraints;
 
     let effector = bones[ik.effector];
@@ -57,11 +46,9 @@ CCD.prototype.solve = function(
     {
         let rotated = this.iterate(
             links, bones,
-            ik, axis,
-            linkPos, invLinkQ, linkScale,
-            effector, effectorPos, effectorVec,
-            targetPoint, targetPos, targetVec,
-            q, vector
+            ik,
+            effector,
+            targetPoint, targetPos,
         );
         if (!rotated) break;
     }
@@ -69,14 +56,23 @@ CCD.prototype.solve = function(
 
 CCD.prototype.iterate = function(
     links, bones,
-    ik, axis,
-    linkPos, invLinkQ, linkScale,
-    effector, effectorPos, effectorVec,
-    targetPoint, targetPos, targetVec,
-    q, vector
+    ik,
+    effector,
+    targetPoint, targetPos,
 )
 {
     let math = Math; // reference overhead reduction in loop
+    // perf/don’t reallocate at every pass
+    let q = this.q;
+    let targetVec = this.targetVec;
+    let effectorPos = this.effectorPos;
+    let effectorVec = this.effectorVec;
+    let linkPos = this.linkPos;
+    let invLinkQ = this.invLinkQ;
+    let linkScale = this.linkScale;
+    let axis = this.axis;
+    let vector = this.vector;
+
     let rotated = false;
     for (let k = 0, kl = links.length; k < kl; k++)
     {
