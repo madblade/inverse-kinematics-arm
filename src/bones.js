@@ -36,10 +36,10 @@ function createExample(scene, state)
     let constraints = {
         effector: 4,
         links: [
-            { id: 3, limitation: (new Vector3( 1, 0, 0 )).normalize() },
-            // { id: 3 },
-            { id: 2, limitation: new Vector3( 0, 0, 1 ) },
-            // { id: 2 },
+            // { id: 3, limitation: (new Vector3( 1, 0, 0 )).normalize() },
+            { id: 3 },
+            // { id: 2, limitation: new Vector3( 0, 0, 1 ) },
+            { id: 2 },
             { id: 1 },
             { id: 0 },
             // { id: 1, limitation: new Vector3( 0, 0, 1 ) },
@@ -71,17 +71,15 @@ function createExample(scene, state)
 function createBones(sizing, constraints, mesh)
 {
     let bones = [];
-    {
-        let prevBone = new Bone();
-        bones.push(prevBone);
-        prevBone.position.y = -sizing.halfHeight;
-        for (let i = 0; i < sizing.segmentCount; i++) {
-            let bone = new Bone();
-            bone.position.y = sizing.segmentHeight;
-            bones.push(bone);
-            prevBone.add(bone);
-            prevBone = bone;
-        }
+    let prevBone = new Bone();
+    bones.push(prevBone);
+    prevBone.position.y = -sizing.halfHeight;
+    for (let i = 0; i < sizing.segmentCount; i++) {
+        let bone = new Bone();
+        bone.position.y = sizing.segmentHeight;
+        bones.push(bone);
+        prevBone.add(bone);
+        prevBone = bone;
     }
 
     skeleton = new Skeleton(bones);

@@ -3,29 +3,20 @@ import './style.css';
 import {
     AmbientLight,
     AxesHelper,
-    Bone, BoxBufferGeometry,
+    BoxBufferGeometry,
     Color,
-    CylinderBufferGeometry,
     DirectionalLight,
     DoubleSide,
-    Float32BufferAttribute,
     GridHelper,
     Mesh,
     MeshBasicMaterial,
-    MeshPhongMaterial,
     PerspectiveCamera,
-    Plane,
-    PlaneBufferGeometry, Quaternion,
+    PlaneBufferGeometry,
     Raycaster,
     Scene,
-    Skeleton,
-    SkeletonHelper,
-    SkinnedMesh,
-    Uint16BufferAttribute,
-    Vector2,
-    Vector3,
+    Vector2, Vector3,
     WebGLRenderer
-}                           from "three";
+} from 'three';
 import { OrbitControls }    from 'three/examples/jsm/controls/OrbitControls';
 import { OutlineEffect }    from 'three/examples/jsm/effects/OutlineEffect';
 import Stats                from 'three/examples/jsm/libs/stats.module';
@@ -148,26 +139,27 @@ function updateBonesForward()
 
 // INVERSE KINEMATICS
 
+let targetPoint = new Vector3(0, 10, 0);
 function onMouseMove(event)
 {
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-}
 
-let solver = new IKSolver();
-function updateBonesInverse()
-{
     // Raycasting
     let raycaster = new Raycaster();
     raycaster.setFromCamera(mouse, camera);
     let intersects = raycaster.intersectObjects([raycastPlane]);
     if (!intersects.length || !intersects[0]) return;
 
-    let targetPoint = intersects[0].point;
+    console.log(intersects);
+    targetPoint.copy(intersects[0].point);
     mouseHelper.position.copy(targetPoint);
+}
 
-    //
-
+let solver = new IKSolver();
+function updateBonesInverse()
+{
+    // IK
     let chain = skeleton.bones;
     let constraints = skeleton.constraints;
     solver.solve(Solver.CCD, chain, targetPoint, 10, constraints);

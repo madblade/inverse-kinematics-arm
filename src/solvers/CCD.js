@@ -44,7 +44,6 @@ CCD.prototype.solve = function(
     let axis = this.axis;
     let vector = this.vector;
 
-    let math = Math; // reference overhead reduction in loop
     let ik = constraints;
 
     let effector = bones[ik.effector];
@@ -56,76 +55,96 @@ CCD.prototype.solve = function(
     let links = ik.links;
     for (let j = 0; j < nbIterations; j++)
     {
-        let rotated = false;
-        for (let k = 0, kl = links.length; k < kl; k++)
-        {
-            let link = bones[links[k].id];
-            // Skip this link and following links.
-            // (this skip can be used for performance optimization)
-            if (links[k].enabled === false) break;
-
-            let limitation = links[k].limitation;
-            let rotationMin = links[k].rotationMin;
-            let rotationMax = links[k].rotationMax;
-
-            // Don't use getWorldPosition/Quaternion() here for the performance
-            // because they call updateMatrixWorld(true) inside.
-            link.matrixWorld.decompose(linkPos, invLinkQ, linkScale);
-            invLinkQ.invert();
-            effectorPos.setFromMatrixPosition(effector.matrixWorld);
-
-            // Check distance from target
-            // TODO compute flops
-            let distance = effectorPos.distanceTo(targetPoint);
-            if (distance < SMALL_DISTANCE) break;
-
-            // Work in link world.
-            effectorVec.subVectors(effectorPos, linkPos);
-            effectorVec.applyQuaternion(invLinkQ);
-            effectorVec.normalize();
-            targetVec.subVectors(targetPos, linkPos);
-            targetVec.applyQuaternion(invLinkQ);
-            targetVec.normalize();
-            let angle = targetVec.dot(effectorVec);
-            if (angle > 1.0) angle = 1.0;
-            else if (angle < -1.0) angle = -1.0;
-            angle = math.acos(angle);
-
-            // Skip if changing angle is too small to prevent bone vibration.
-            if (angle < SMALL_ANGLE) continue;
-            if (ik.minAngle !== undefined && angle < ik.minAngle) angle = ik.minAngle;
-            if (ik.maxAngle !== undefined && angle > ik.maxAngle) angle = ik.maxAngle;
-            axis.crossVectors(effectorVec, targetVec);
-            axis.normalize();
-
-            // Apply.
-            q.setFromAxisAngle(axis, angle);
-            let qq = new Quaternion();
-            qq.copy(link.quaternion).multiply(q);
-            link.quaternion.multiply(q);
-            // ? think about this slerp function.
-            // link.quaternion.slerp(qq, 0.05);
-
-            if (limitation !== undefined) {
-                // TODO reconsider limitation specification
-                let c = link.quaternion.w;
-                if (c > 1.0) c = 1.0;
-                let c2 = math.sqrt(1 - c * c);
-                link.quaternion.set(limitation.x * c2, limitation.y * c2, limitation.z * c2, c);
-            }
-
-            // ? softify at min/max
-            if (rotationMin !== undefined)
-                link.rotation.setFromVector3(link.rotation.toVector3(vector).max(rotationMin));
-            if (rotationMax !== undefined)
-                link.rotation.setFromVector3(link.rotation.toVector3(vector).min(rotationMax));
-
-            link.updateMatrixWorld(true);
-            rotated = true;
-        }
-
+        let rotated = this.iterate(
+            links, bones,
+            ik, axis,
+            linkPos, invLinkQ, linkScale,
+            effector, effectorPos, effectorVec,
+            targetPoint, targetPos, targetVec,
+            q, vector
+        );
         if (!rotated) break;
     }
+};
+
+CCD.prototype.iterate = function(
+    links, bones,
+    ik, axis,
+    linkPos, invLinkQ, linkScale,
+    effector, effectorPos, effectorVec,
+    targetPoint, targetPos, targetVec,
+    q, vector
+)
+{
+    let math = Math; // reference overhead reduction in loop
+    let rotated = false;
+    for (let k = 0, kl = links.length; k < kl; k++)
+    {
+        let link = bones[links[k].id];
+        // Skip this link and following links.
+        // (this skip can be used for performance optimization)
+        if (links[k].enabled === false) break;
+
+        let limitation = links[k].limitation;
+        let rotationMin = links[k].rotationMin;
+        let rotationMax = links[k].rotationMax;
+
+        // Don't use getWorldPosition/Quaternion() here for the performance
+        // because they call updateMatrixWorld(true) inside.
+        link.matrixWorld.decompose(linkPos, invLinkQ, linkScale);
+        invLinkQ.invert();
+        effectorPos.setFromMatrixPosition(effector.matrixWorld);
+
+        // Check distance from target
+        // TODO compute flops
+        let distance = effectorPos.distanceTo(targetPoint);
+        if (distance < SMALL_DISTANCE) break;
+
+        // Work in link world.
+        effectorVec.subVectors(effectorPos, linkPos);
+        effectorVec.applyQuaternion(invLinkQ);
+        effectorVec.normalize();
+        targetVec.subVectors(targetPos, linkPos);
+        targetVec.applyQuaternion(invLinkQ);
+        targetVec.normalize();
+        let angle = targetVec.dot(effectorVec);
+        if (angle > 1.0) angle = 1.0;
+        else if (angle < -1.0) angle = -1.0;
+        angle = math.acos(angle);
+
+        // Skip if changing angle is too small to prevent bone vibration.
+        if (angle < SMALL_ANGLE) continue;
+        if (ik.minAngle !== undefined && angle < ik.minAngle) angle = ik.minAngle;
+        if (ik.maxAngle !== undefined && angle > ik.maxAngle) angle = ik.maxAngle;
+        axis.crossVectors(effectorVec, targetVec);
+        axis.normalize();
+
+        // Apply.
+        q.setFromAxisAngle(axis, angle);
+        // let qq = new Quaternion();
+        // qq.copy(link.quaternion).multiply(q);
+        link.quaternion.multiply(q);
+        // ? think about this slerp function.
+        // link.quaternion.slerp(qq, 0.05);
+
+        if (limitation !== undefined) {
+            // TODO reconsider limitation specification
+            let c = link.quaternion.w;
+            if (c > 1.0) c = 1.0;
+            let c2 = math.sqrt(1 - c * c);
+            link.quaternion.set(limitation.x * c2, limitation.y * c2, limitation.z * c2, c);
+        }
+
+        // ? softify at min/max
+        if (rotationMin !== undefined)
+            link.rotation.setFromVector3(link.rotation.toVector3(vector).max(rotationMin));
+        if (rotationMax !== undefined)
+            link.rotation.setFromVector3(link.rotation.toVector3(vector).min(rotationMax));
+
+        link.updateMatrixWorld(true);
+        rotated = true;
+    }
+    return rotated;
 };
 
 export { CCD };

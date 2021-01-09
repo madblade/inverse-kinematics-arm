@@ -250,7 +250,7 @@ FABRIK.prototype.backward = function(
 )
 {
     // TODO get base constraint
-    let mBaseboneConstraintType = 0;
+    let mBaseboneConstraintType = BaseboneConstraintType3D.NONE;
 
     for (let loop = 0; loop < chain.length; ++loop)
     {
