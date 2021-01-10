@@ -92,7 +92,7 @@ function createBones(sizing, constraints, mesh)
     let bones = [];
     let chainProxy = []; // for FABRIK
     let prevBone = new Bone();
-    chainProxy.push(new Vector3());
+    chainProxy.push(new Vector3(0, 0, 0));
     bones.push(prevBone);
     prevBone.position.y = -sizing.halfHeight;
     let fixedBaseLocation = new Vector3();
@@ -103,7 +103,7 @@ function createBones(sizing, constraints, mesh)
         bones.push(bone);
         prevBone.add(bone);
         prevBone = bone;
-        chainProxy.push(new Vector3());
+        chainProxy.push(new Vector3(0, (i + 1) * sizing.segmentHeight, 0));
     }
 
     let boneLengths = []; // for FABRIK

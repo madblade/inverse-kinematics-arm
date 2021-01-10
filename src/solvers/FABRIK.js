@@ -34,7 +34,7 @@ function FABRIK()
 
 const mSolveDistanceThreshold = 1.0;
 const mMinIterationChange = 0.01;
-const mFixedBaseMode = false;
+const mFixedBaseMode = true;
 
 // TODO compute flops
 FABRIK.prototype.solve = function(
@@ -525,7 +525,7 @@ FABRIK.prototype.backward = function(
                 thisBoneInnerToOuterUV.copy(nextBonePosition).addScaledVector(thisBonePosition, -1).normalize();
                 let newEndLocation = new Vector3();
                 newEndLocation.copy(thisBone).addScaledVector(thisBoneInnerToOuterUV, thisBoneLength);
-                thisBone.copy(newEndLocation);
+                thisEnd.copy(newEndLocation);
 
                 // thisBone.setEndLocation(newEndLocation);
 
