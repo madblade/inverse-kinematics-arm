@@ -3,10 +3,10 @@ import {
     Bone,
     CylinderBufferGeometry, DoubleSide,
     Float32BufferAttribute,
-    MeshPhongMaterial, PlaneHelper, Skeleton, SkeletonHelper, SkinnedMesh,
+    MeshPhongMaterial, Object3D, PlaneHelper, Quaternion, Skeleton, SkeletonHelper, SkinnedMesh,
     Uint16BufferAttribute,
     Vector3
-}                              from 'three';
+} from 'three';
 import { GUI }                 from 'three/examples/jsm/libs/dat.gui.module';
 import { IKConstraintsHelper } from './helpers/IKConstraintsHelper';
 
@@ -36,20 +36,22 @@ function createExample(scene, state)
     let constraints = {
         effector: 4,
         links: [
-            { id: 3, limitation: (new Vector3( 1, 0, 0 )).normalize() },
+            // { id: 3, limitation: (new Vector3( 1, 0, 0 )).normalize() },
             // { id: 3,
                 // rotationMin: new Vector3(-Math.PI / 2, -Math.PI / 2, -Math.PI / 2),
                 // rotationMax: new Vector3(Math.PI / 2, Math.PI / 2, Math.PI / 2)
             // },
-            { id: 2, limitation: new Vector3( 0, 0, 1 ) },
-            // { id: 2 },
+            // { id: 2, limitation: new Vector3( 0, 0, 1 ) },
+
+            { id: 3 },
+            { id: 2 },
             { id: 1 },
             { id: 0 },
             // { id: 1, limitation: new Vector3( 0, 0, 1 ) },
             // { id: 0, limitation: new Vector3( 1, 0, 0 )}
         ],
         minAngle: 0.,
-        maxAngle: 1.0,
+        maxAngle: 1.0
     };
 
     // Skinned mesh
@@ -64,6 +66,11 @@ function createExample(scene, state)
     skeletonHelper.material.linewidth = 2;
     scene.add(skeletonHelper);
 
+    let o = new Object3D();
+    o.add(skeleton.chainProxy[0]);
+    let sk2 = new SkeletonHelper(o);
+    scene.add(sk2);
+
     // Constraints helper
     createConstraintsHelper(mesh, constraints, scene);
 
@@ -74,19 +81,38 @@ function createExample(scene, state)
 function createBones(sizing, constraints, mesh)
 {
     let bones = [];
+    let chainProxy = []; // for FABRIK
     let prevBone = new Bone();
+    let prevBoneProxy = new Bone();
+    chainProxy.push(prevBoneProxy);
     bones.push(prevBone);
     prevBone.position.y = -sizing.halfHeight;
     for (let i = 0; i < sizing.segmentCount; i++) {
         let bone = new Bone();
-        bone.position.y = sizing.segmentHeight;
+        bone.position.y = sizing.segmentHeight; // relative to parent
         bones.push(bone);
         prevBone.add(bone);
         prevBone = bone;
+        let boneProxy = new Bone();
+        prevBoneProxy.add(boneProxy);
+        prevBoneProxy = boneProxy;
+        chainProxy.push(boneProxy);
     }
+
+    let boneLengths = []; // for FABRIK
+    for (let i = 0; i < bones.length - 1; ++i)
+    {
+        boneLengths.push(5);
+    }
+    boneLengths.push(0);
+    // bonePositions.push(new Vector3(0, 0, 0));
+    constraints.boneLengths = boneLengths;
+    constraints.chainProxy = chainProxy;
+    // constraints.bonePositions = bonePositions;
 
     skeleton = new Skeleton(bones);
     skeleton.constraints = constraints;
+    skeleton.chainProxy = chainProxy;
 
     let rootBone = skeleton.bones[0];
     mesh.add(rootBone);

@@ -151,7 +151,6 @@ function onMouseMove(event)
     let intersects = raycaster.intersectObjects([raycastPlane]);
     if (!intersects.length || !intersects[0]) return;
 
-    console.log(intersects);
     targetPoint.copy(intersects[0].point);
     mouseHelper.position.copy(targetPoint);
 }
@@ -162,7 +161,7 @@ function updateBonesInverse()
     // IK
     let chain = skeleton.bones;
     let constraints = skeleton.constraints;
-    solver.solve(Solver.CCD, chain, targetPoint, 10, constraints);
+    solver.solve(Solver.FABRIK, chain, targetPoint, 10, constraints);
 }
 
 // Entry
