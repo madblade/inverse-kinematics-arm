@@ -48,14 +48,15 @@ FABRIK.prototype.solve = function(
     let lastPassSolveDistance = Number.MAX_VALUE;
     let currentSolveDistance = Number.MAX_VALUE;
 
-    this.mFixedBaseLocation = chain[0].position;
+    // this.mFixedBaseLocation = chain[0].position;
+    this.mFixedBaseLocation = constraints.fixedBaseLocation;
 
     // Allow up to our iteration limit attempts at solving the chain
     let solveDistance;
     for (let loop = 0; loop < iterations; ++loop)
     {
         // Solve the chain for this target
-        // for (let i = 0; i < 10; ++i) // iterate a few times for now
+        for (let i = 0; i < 10; ++i) // iterate a few times for now
         solveDistance = this.iterate(targetPoint, chain, constraints);
 
         // Did we solve it for distance? If so, update our best distance and best solution, and also
@@ -94,6 +95,18 @@ FABRIK.prototype.solve = function(
     // mLastBaseLocation.set( getBaseLocation() );
     // mLastTargetLocation.set(newTarget);
 
+    // Update helper
+    let l = constraints.line;
+    let p = constraints.chainProxy;
+    const positions = l.geometry.attributes.position.array;
+    for (let i = 0; i < p.length; ++i)
+    {
+        positions[3 * i] = p[i].x;
+        positions[3 * i + 1] = p[i].y;
+        positions[3 * i + 2] = p[i].z;
+    }
+    l.geometry.attributes.position.needsUpdate = true;
+
     return currentSolveDistance;
 };
 
@@ -105,7 +118,7 @@ FABRIK.prototype.iterate = function(
 
     this.forward(targetPoint, chain, constraints);
 
-    // this.backward(targetPoint, chain, constraints);
+    this.backward(targetPoint, chain, constraints);
 
     // TODO compute distance from end to target
     let distance = 0;
@@ -150,11 +163,11 @@ FABRIK.prototype.forward = function(
 )
 {
     const thisBonePosition = this.v1;
-    const thisBoneScale = this.v2;
-    const thisBoneQuaternion= this.q1;
+    // const thisBoneScale = this.v2;
+    // const thisBoneQuaternion= this.q1;
     const nextBonePosition = this.v3;
-    const nextBoneScale = this.v4;
-    const nextBoneQuaternion = this.q2;
+    // const nextBoneScale = this.v4;
+    // const nextBoneQuaternion = this.q2;
     const thisBoneOuterToInnerUV = this.v5;
 
     const boneLengths = constraints.boneLengths;
@@ -166,8 +179,10 @@ FABRIK.prototype.forward = function(
     for (let loop = chainLength - 1; loop >= 0; --loop)
     {
         // Get the length of the bone we're working on
-        let thisBone = chain[loop];
-        thisBone.matrixWorld.decompose(thisBonePosition, thisBoneQuaternion, thisBoneScale);
+        // let thisBone = chain[loop];
+        let thisBone = proxy[loop];
+        thisBonePosition.copy(thisBone);
+        // thisBone.matrixWorld.decompose(thisBonePosition, thisBoneQuaternion, thisBoneScale);
         // let thisBoneLength = thisBone.length();
         let thisBoneLength = boneLengths[loop];
         // FabrikJoint3D thisBoneJoint = thisBone.getJoint();
@@ -175,7 +190,7 @@ FABRIK.prototype.forward = function(
         let thisBoneJointType = JointType.BALL;
 
         // If we are NOT working on the end effector bone
-        if (loop !== chainLength - 1 && false)
+        if (loop !== chainLength - 1)
         {
             // Get the outer-to-inner unit vector of the bone further out
             // Vec3f outerBoneOuterToInnerUV = mChain.get(loop+1).getDirectionUV().negated();
@@ -183,8 +198,10 @@ FABRIK.prototype.forward = function(
             // Get the outer-to-inner unit vector of this bone
             // Vec3f thisBoneOuterToInnerUV = thisBone.getDirectionUV().negated();
             let nextBone = chain[loop + 1];
-            nextBone.matrixWorld.decompose(nextBonePosition, nextBoneQuaternion, nextBoneScale);
-            thisBoneOuterToInnerUV.copy(nextBonePosition).addScaledVector(thisBonePosition, -1).normalize();
+            // nextBone.matrixWorld.decompose(nextBonePosition, nextBoneQuaternion, nextBoneScale);
+            nextBone = proxy[loop + 1];
+            nextBonePosition.copy(nextBone);
+            thisBoneOuterToInnerUV.copy(nextBonePosition).addScaledVector(thisBonePosition, -1).normalize().negate();
 
             // Get the joint type for this bone and handle constraints on thisBoneInnerToOuterUV
             if (thisBoneJointType === JointType.BALL)
@@ -238,7 +255,8 @@ FABRIK.prototype.forward = function(
 
             // Set the new start joint location for this bone
             // thisBone.setStartLocation(newStartLocation);
-            thisBone.position.copy(newStartLocation);
+            // thisBone.position.copy(newStartLocation);
+            thisBone.copy(newStartLocation);
 
             // [madblade] I think there’s no need to do the following.
             // If we are not working on the basebone, then we also set the end joint location of
@@ -256,15 +274,16 @@ FABRIK.prototype.forward = function(
         {
             // Snap the end effector's end location to the target
             // thisBone.setEndLocation(target);
-            let endEffector = chain[loop + 1];
-            endEffector = proxy[loop + 1];
-            endEffector.position.copy(targetPoint);
+            // let endEffector = chain[loop + 1];
+            let endEffector = proxy[loop + 1];
+            endEffector.copy(targetPoint);
             // endEffector.matrixWorld.setPosition(targetPoint);
 
             // Get the UV between the target / end-location (which are now the same) and the start location of this bone
             // Vec3f thisBoneOuterToInnerUV = thisBone.getDirectionUV().negated();
-            endEffector.matrixWorld.decompose(nextBonePosition, nextBoneQuaternion, nextBoneScale);
-            thisBoneOuterToInnerUV.copy(nextBonePosition).addScaledVector(thisBonePosition, -1).normalize();
+            // endEffector.matrixWorld.decompose(nextBonePosition, nextBoneQuaternion, nextBoneScale);
+            nextBonePosition.copy(endEffector);
+            thisBoneOuterToInnerUV.copy(nextBonePosition).addScaledVector(thisBonePosition, -1).normalize().negate();
 
             // If the end effector is global hinged then we have to snap to it, then keep that
             // resulting outer-to-inner UV in the plane of the hinge rotation axis
@@ -301,7 +320,8 @@ FABRIK.prototype.forward = function(
             //
             // // Set the new start joint location for this bone to be new start location...
             // thisBone.setStartLocation(newStartLocation);
-            // thisBone.position.copy(newStartLocation); // TODO unc
+            // thisBone.position.copy(newStartLocation);
+            thisBone.copy(newStartLocation);
             //
             // // ...and set the end joint location of the bone further in to also be at the new start location (if there IS a bone
             // // further in - this may be a single bone chain)
@@ -321,19 +341,20 @@ FABRIK.prototype.backward = function(
     let mBaseboneConstraintType = BaseboneConstraintType3D.NONE;
 
     const thisBonePosition = this.v1;
-    const thisBoneScale = this.v2;
-    const thisBoneQuaternion= this.q1;
+    // const thisBoneScale = this.v2;
+    // const thisBoneQuaternion= this.q1;
     const previousBonePosition = this.v3;
-    const previousBoneScale = this.v4;
-    const previousBoneQuaternion = this.q2;
+    // const previousBoneScale = this.v4;
+    // const previousBoneQuaternion = this.q2;
 
     const thisBoneInnerToOuterUV = this.v5;
     const prevBoneInnerToOuterUV = this.v6;
 
     const nextBonePosition = this.v7;
-    const nextBoneScale = this.v8;
-    const nextBoneQuaternion = this.q3;
+    // const nextBoneScale = this.v8;
+    // const nextBoneQuaternion = this.q3;
 
+    const proxy = constraints.chainProxy;
     const boneLengths = constraints.boneLengths;
     const chainLength = chain.length - 1; // end bone === end effector!
 
@@ -341,17 +362,23 @@ FABRIK.prototype.backward = function(
     {
         // FabrikBone3D thisBone = mChain.get(loop);
         // float thisBoneLength  = thisBone.length();
-        let thisBone = chain[loop];
+        // let thisBone = chain[loop];
+        let thisBone = proxy[loop];
         let thisBoneLength = boneLengths[loop];
-        thisBone.matrixWorld.decompose(thisBonePosition, thisBoneQuaternion, thisBoneScale);
+        thisBonePosition.copy(thisBone);
+        // thisBone.matrixWorld.decompose(thisBonePosition, thisBoneQuaternion, thisBoneScale);
 
         // If we are not working on the basebone
         if (loop !== 0)
         {
-            let previousBone = chain[loop - 1];
-            previousBone.matrixWorld.decompose(previousBonePosition, previousBoneQuaternion, previousBoneScale);
-            let thisEnd = chain[loop + 1];
-            thisEnd.matrixWorld.decompose(nextBonePosition, nextBoneQuaternion, nextBoneScale);
+            // let previousBone = chain[loop - 1];
+            let previousBone = proxy[loop - 1];
+            // previousBone.matrixWorld.decompose(previousBonePosition, previousBoneQuaternion, previousBoneScale);
+            previousBonePosition.copy(previousBone);
+            // let thisEnd = chain[loop + 1];
+            let thisEnd = proxy[loop + 1];
+            // thisEnd.matrixWorld.decompose(nextBonePosition, nextBoneQuaternion, nextBoneScale);
+            nextBonePosition.copy(thisEnd);
             // Get the inner-to-outer direction of this bone as well as the previous bone to use as a baseline
             // Vec3f thisBoneInnerToOuterUV = thisBone.getDirectionUV();
             // Vec3f prevBoneInnerToOuterUV = mChain.get(loop-1).getDirectionUV();
@@ -453,7 +480,8 @@ FABRIK.prototype.backward = function(
 
             // Set the new start joint location for this bone
             // thisBone.setEndLocation(newEndLocation);
-            thisEnd.position.copy(newEndLocation);
+            // thisEnd.position.copy(newEndLocation);
+            thisEnd.copy(newEndLocation);
 
             // If we are not working on the end effector bone, then we set the start joint location of the next bone in
             // the chain (i.e. the bone closer to the target) to be the new end joint location of this bone.
@@ -466,20 +494,27 @@ FABRIK.prototype.backward = function(
         // If we ARE working on the basebone...
         else
         {
+            let thisEnd = proxy[loop + 1];
+            nextBonePosition.copy(thisEnd);
+
             // If the base location is fixed then snap the start location of the basebone back to the fixed base...
             if (mFixedBaseMode)
             {
                 // thisBone.setStartLocation(mFixedBaseLocation);
-                thisBone.position.copy(this.mFixedBaseLocation);
+                // thisBone.position.copy(this.mFixedBaseLocation);
+                thisBone.copy(this.mFixedBaseLocation);
             }
             else // ...otherwise project it backwards from the end to the start by its length.
             {
                 // thisBone.setStartLocation( thisBone.getEndLocation().minus( thisBone.getDirectionUV().times(thisBoneLength) ) );
-                let thisEnd = chain[loop + 1];
-                thisEnd.matrixWorld.decompose(nextBonePosition, nextBoneQuaternion, nextBoneScale);
+                // let thisEnd = chain[loop + 1];
+                // thisEnd.matrixWorld.decompose(nextBonePosition, nextBoneQuaternion, nextBoneScale);
                 thisBoneInnerToOuterUV.copy(nextBonePosition).addScaledVector(thisBonePosition, -1).normalize();
-                thisBone.position.copy(nextBonePosition).addScaledVector(thisBoneInnerToOuterUV, -thisBoneLength);
+                // thisBone.position.copy(nextBonePosition).addScaledVector(thisBoneInnerToOuterUV, -thisBoneLength);
+                thisBone.copy(nextBonePosition).addScaledVector(thisBoneInnerToOuterUV, -thisBoneLength);
             }
+
+            thisBonePosition.copy(thisBone);
 
             // If the basebone is unconstrained then process it as usual...
             if (mBaseboneConstraintType === BaseboneConstraintType3D.NONE)
@@ -487,6 +522,11 @@ FABRIK.prototype.backward = function(
                 // Set the new end location of this bone, and if there are more bones,
                 // then set the start location of the next bone to be the end location of this bone
                 // Vec3f newEndLocation = thisBone.getStartLocation().plus( thisBone.getDirectionUV().times(thisBoneLength) );
+                thisBoneInnerToOuterUV.copy(nextBonePosition).addScaledVector(thisBonePosition, -1).normalize();
+                let newEndLocation = new Vector3();
+                newEndLocation.copy(thisBone).addScaledVector(thisBoneInnerToOuterUV, thisBoneLength);
+                thisBone.copy(newEndLocation);
+
                 // thisBone.setEndLocation(newEndLocation);
 
                 // if (mChain.size() > 1) {
