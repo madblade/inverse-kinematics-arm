@@ -107,6 +107,30 @@ FABRIK.prototype.solve = function(
     }
     l.geometry.attributes.position.needsUpdate = true;
 
+    // Update mesh
+    let proxies = constraints.chainProxy;
+    let currentV1 = new Vector3();
+    let currentV2 = new Vector3();
+    let currentQ = new Quaternion();
+    for (let i = 0; i < chain.length - 1; ++i)
+    {
+        let currentBone = chain[i];
+        let currentStart = proxies[i];
+        let currentEnd = proxies[i + 1];
+
+        // last bone’s unit vector
+        if (i === 0)
+            currentV1.set(0, 1, 0);
+        else
+            currentV1.copy(currentV2);
+
+        // current bone’s unit vector
+        currentV2.copy(currentEnd).addScaledVector(currentStart, -1).normalize();
+
+        currentQ.setFromUnitVectors(currentV1, currentV2);
+        currentBone.setRotationFromQuaternion(currentQ);
+    }
+
     return currentSolveDistance;
 };
 

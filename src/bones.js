@@ -56,7 +56,7 @@ function createExample(scene, state)
 
     // Skinned mesh
     let mesh = createSkinnedMesh(sizing);
-    // scene.add(mesh);
+    scene.add(mesh);
 
     // Bones
     createBones(sizing, constraints, mesh);
@@ -64,7 +64,7 @@ function createExample(scene, state)
     // Skeleton helper
     let skeletonHelper = new SkeletonHelper(mesh);
     skeletonHelper.material.linewidth = 2;
-    // scene.add(skeletonHelper);
+    scene.add(skeletonHelper);
 
     let m = new LineBasicMaterial({ vertexColors: true });
     let g = new BufferGeometry().setFromPoints(skeleton.chainProxy);
