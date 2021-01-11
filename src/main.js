@@ -162,6 +162,7 @@ function updateBonesInverse()
     let chain = skeleton.bones;
     let constraints = skeleton.constraints;
     solver.solve(Solver.FABRIK, chain, targetPoint, 10, constraints);
+    // solver.solve(Solver.CCD, chain, targetPoint, 10, constraints);
 }
 
 // Entry

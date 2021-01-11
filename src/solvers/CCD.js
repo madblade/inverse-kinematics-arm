@@ -74,9 +74,15 @@ CCD.prototype.iterate = function(
     let vector = this.vector;
 
     let rotated = false;
-    for (let k = 0, kl = links.length; k < kl; k++)
+
+    // From end effector to base
+    const kl = links.length;
+    for (let k = kl - 1; k >= 0; --k)
     {
-        let link = bones[links[k].id];
+        const id = links[k].id;
+        if (id !== k) throw Error('Please specify all links in the constraints array.');
+        let link = bones[id];
+
         // Skip this link and following links.
         // (this skip can be used for performance optimization)
         if (links[k].enabled === false) break;

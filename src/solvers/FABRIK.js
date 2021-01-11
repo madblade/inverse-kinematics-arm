@@ -178,6 +178,7 @@ const BaseboneConstraintType3D = {
 //      minAngle: min step angle
 //      maxAngle: max step angle
 //      boneLengths: array of bone lengths (last one === effector === 0)
+//      chainProxy: (internal) set of 3-vectors, temp skeleton copy.
 
 // ---------- Forward pass from end effector to base -----------
 FABRIK.prototype.forward = function(
@@ -198,6 +199,7 @@ FABRIK.prototype.forward = function(
     const proxy = constraints.chainProxy;
 
     const chainLength = chain.length - 1; // end bone === end effector in our setup
+    const links = constraints.links;
 
     // Loop over all bones in the chain, from the end effector (numBones-1) back to the basebone (0)
     for (let loop = chainLength - 1; loop >= 0; --loop)
@@ -211,7 +213,20 @@ FABRIK.prototype.forward = function(
         let thisBoneLength = boneLengths[loop];
         // FabrikJoint3D thisBoneJoint = thisBone.getJoint();
         // JointType thisBoneJointType = thisBone.getJointType();
-        let thisBoneJointType = JointType.BALL;
+        let thisBoneJointType;
+
+        const link = links[loop];
+        const id = link.id;
+        if (id !== loop) throw Error('Please specify all links in the constraints array.');
+        const limitation = link.limitation;
+        const rotationMin = link.rotationMin;
+        const rotationMax = link.rotationMax;
+        if (limitation)
+            thisBoneJointType = JointType.LOCAL_HINGE;
+        else if (rotationMin || rotationMax)
+            thisBoneJointType = JointType.BALL;
+        else
+            thisBoneJointType = JointType.BALL;
 
         // If we are NOT working on the end effector bone
         if (loop !== chainLength - 1)
@@ -412,7 +427,21 @@ FABRIK.prototype.backward = function(
             // Dealing with a ball joint?
             // FabrikJoint3D thisBoneJoint = thisBone.getJoint();
             // JointType jointType = thisBoneJoint.getJointType();
-            let jointType = JointType.BALL;
+            let jointType; // = JointType.BALL;
+
+            const link = constraints.links[loop];
+            const id = link.id;
+            if (id !== loop) throw Error('Please specify all links in the constraints array.');
+            const limitation = link.limitation;
+            const rotationMin = link.rotationMin;
+            const rotationMax = link.rotationMax;
+            if (limitation)
+                jointType = JointType.LOCAL_HINGE;
+            else if (rotationMin || rotationMax)
+                jointType = JointType.BALL;
+            else
+                jointType = JointType.BALL;
+
             if (jointType === JointType.BALL)
             {
             //     float angleBetweenDegs    = Vec3f.getAngleBetweenDegs(prevBoneInnerToOuterUV, thisBoneInnerToOuterUV);
