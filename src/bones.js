@@ -40,12 +40,12 @@ function createExample(scene, state)
             { id: 0 },
             { id: 1 },
             { id: 2 },
-            { id: 3 },
+            // { id: 3 },
 
             // { id: 0, limitation: new Vector3( 1, 0, 0 )}
             // { id: 1, limitation: new Vector3( 0, 0, 1 ) },
             // { id: 2, limitation: new Vector3( 0, 0, 1 ) },
-            // { id: 3, limitation: (new Vector3( 1, 0, 0 )).normalize() },
+            { id: 3, limitation: (new Vector3( 1, 0, 0 )).normalize() },
             // { id: 3,
                 // rotationMin: new Vector3(-Math.PI / 2, -Math.PI / 2, -Math.PI / 2),
                 // rotationMax: new Vector3(Math.PI / 2, Math.PI / 2, Math.PI / 2)
@@ -65,7 +65,7 @@ function createExample(scene, state)
     // Skeleton helper
     let skeletonHelper = new SkeletonHelper(mesh);
     skeletonHelper.material.linewidth = 2;
-    // scene.add(skeletonHelper);
+    scene.add(skeletonHelper);
 
     let m = new LineBasicMaterial({ vertexColors: true });
     let g = new BufferGeometry().setFromPoints(skeleton.chainProxy);
@@ -159,7 +159,9 @@ function createSkinnedMesh(sizing)
         color: 0x156289,
         emissive: 0x072534,
         side: DoubleSide,
-        flatShading: true
+        flatShading: true,
+        transparent: true,
+        opacity: 0.5
     });
 
     return new SkinnedMesh(skinnedMeshGeometry, skinnedMeshMaterial);

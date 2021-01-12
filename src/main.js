@@ -78,9 +78,11 @@ function init()
     scene.add(axesHelper);
 
     let planeGeometry = new PlaneBufferGeometry(100, 100, 2);
-    let planeMaterial = new MeshBasicMaterial({color: 0xffff00, side: DoubleSide});
+    let planeMaterial = new MeshBasicMaterial({color: 0xffff00, side: DoubleSide, wireframe: true});
     raycastPlane = new Mesh(planeGeometry, planeMaterial);
+    // raycastPlane.rotation.x = Math.PI / 2;
     raycastPlane.rotation.x = Math.PI / 2;
+    scene.add(raycastPlane);
 
     // Mouse helper
     let mouseGeometry = new BoxBufferGeometry(1, 1, 1);

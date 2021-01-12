@@ -112,6 +112,7 @@ FABRIK.prototype.solve = function(
     let currentV1 = new Vector3();
     let currentV2 = new Vector3();
     let currentQ = new Quaternion();
+    let lastQ = new Quaternion();
     for (let i = 0; i < chain.length - 1; ++i)
     {
         let currentBone = chain[i];
@@ -127,8 +128,43 @@ FABRIK.prototype.solve = function(
         // current bone’s unit vector
         currentV2.copy(currentEnd).addScaledVector(currentStart, -1).normalize();
 
-        currentQ.setFromUnitVectors(currentV1, currentV2);
-        currentBone.setRotationFromQuaternion(currentQ);
+        if (i === 0)
+        {
+            currentQ.setFromUnitVectors(currentV1, currentV2);
+            currentBone.setRotationFromQuaternion(currentQ);
+
+            // let nv1 = new Vector3();
+            // let nv2 = new Vector3();
+            // nv1.copy(currentV1);
+            // nv2.copy(currentV2);
+            // let angle = nv1.dot(nv2); if (angle > 1.) angle = 1.; else if (angle < -1.) angle = -1.;
+            // angle = Math.acos(angle);
+            // nv1.crossVectors(nv1, nv2);
+            // nv1.normalize();
+            // currentQ.setFromAxisAngle(nv1, angle);
+            // currentBone.setRotationFromQuaternion(currentQ);
+        }
+        else
+        {
+            let lastBone = chain[i - 1];
+            let t = new Vector3();
+            let s = new Vector3();
+            lastBone.matrixWorld.decompose(t, lastQ, s);
+            let nv1 = new Vector3();
+            let nv2 = new Vector3();
+            nv1.copy(currentV1);
+            nv2.copy(currentV2);
+            let angle = nv1.dot(nv2); if (angle > 1.) angle = 1.; else if (angle < -1.) angle = -1.;
+            angle = Math.acos(angle);
+            nv1.crossVectors(nv1, nv2);
+            nv1.normalize()
+            nv1.applyQuaternion(lastQ.conjugate());
+            currentQ.setFromAxisAngle(nv1, angle);
+            // currentQ.setFromUnitVectors(nv1, nv2);
+            // currentBone.setRotationFromQuaternion(lastQ);
+            // currentBone.applyQuaternion(currentQ)
+            currentBone.setRotationFromQuaternion(currentQ);
+        }
     }
 
     return currentSolveDistance;
@@ -266,14 +302,24 @@ FABRIK.prototype.forward = function(
                 // Not a basebone? Then construct a rotation matrix based on the previous bones inner-to-to-inner direction...
                 // Mat3f m;
                 // Vec3f relativeHingeRotationAxis;
-                // if (loop > 0) {
+                let relativeHingeRotationAxis = new Vector3();
+                if (loop > 0)
+                {
+                    let previousBone = proxy[loop - 1];
+                    let previousBoneInnerToOuterUV = new Vector3();
+                    previousBoneInnerToOuterUV.copy(thisBonePosition).addScaledVector(previousBone, -1).normalize();
+                    let basisVector = new Vector3(0, 1, 0); // TODO debug
+                    let q = new Quaternion();
+                    q.setFromUnitVectors(basisVector, previousBoneInnerToOuterUV);
+                    relativeHingeRotationAxis.copy(limitation).applyQuaternion(q);
                 //     m = Mat3f.createRotationMatrix( mChain.get(loop-1).getDirectionUV() );
                 //     relativeHingeRotationAxis = m.times( thisBoneJoint.getHingeRotationAxis() ).normalise();
-                // }
-                // else // ...basebone? Need to construct matrix from the relative constraint UV.
-                // {
-                //     relativeHingeRotationAxis = mBaseboneRelativeConstraintUV;
-                // }
+                }
+                else // ...basebone? Need to construct matrix from the relative constraint UV.
+                {
+                    // [madblade]: I think there’s no need to do that
+                    // relativeHingeRotationAxis = mBaseboneRelativeConstraintUV;
+                }
 
                 // ...and transform the hinge rotation axis into the previous bones frame of reference.
                 //Vec3f
@@ -281,6 +327,7 @@ FABRIK.prototype.forward = function(
                 // Project this bone's outer-to-inner direction onto the plane described by the relative hinge rotation axis
                 // Note: The returned vector is normalised.
                 // thisBoneOuterToInnerUV = thisBoneOuterToInnerUV.projectOntoPlane(relativeHingeRotationAxis);
+                thisBoneOuterToInnerUV.projectOnPlane(relativeHingeRotationAxis);
 
                 // NOTE: Constraining about the hinge reference axis on this forward pass leads to poor solutions... so we won't.
             }
@@ -340,13 +387,23 @@ FABRIK.prototype.forward = function(
             //
             //         // Construct a rotation matrix based on the previous bones inner-to-to-inner direction...
             //         Mat3f m = Mat3f.createRotationMatrix( mChain.get(loop-1).getDirectionUV() );
+                    let relativeHingeRotationAxis = new Vector3();
+                    let previousBone = proxy[loop - 1];
+                    let previousBoneInnerToOuterUV = new Vector3();
+                    previousBoneInnerToOuterUV.copy(thisBonePosition).addScaledVector(previousBone, -1).normalize();
+                    let basisVector = new Vector3(0, 1, 0); // TODO debug
+                    let q = new Quaternion();
+                    q.setFromUnitVectors(basisVector, previousBoneInnerToOuterUV);
             //
             //         // ...and transform the hinge rotation axis into the previous bones frame of reference.
             //         Vec3f relativeHingeRotationAxis = m.times( thisBoneJoint.getHingeRotationAxis() ).normalise();
+                    relativeHingeRotationAxis.copy(limitation).applyQuaternion(q);
+
             //
             //         // Project this bone's outer-to-inner direction onto the plane described by the relative hinge rotation axis
             //         // Note: The returned vector is normalised.
             //         thisBoneOuterToInnerUV = thisBoneOuterToInnerUV.projectOntoPlane(relativeHingeRotationAxis);
+                    thisBoneOuterToInnerUV.projectOnPlane(relativeHingeRotationAxis);
                     break;
             }
             //
@@ -378,6 +435,17 @@ FABRIK.prototype.backward = function(
 )
 {
     let mBaseboneConstraintType = BaseboneConstraintType3D.NONE;
+    const base = constraints.links[0];
+    if (base.id !== 0) throw Error('Please specify all links in the constraints array.');
+    const limitation = base.limitation;
+    const rotationMin = base.rotationMin; // unsupported?
+    const rotationMax = base.rotationMax;
+    if (limitation)
+        mBaseboneConstraintType = BaseboneConstraintType3D.LOCAL_HINGE;
+    else if (rotationMin || rotationMax)
+        mBaseboneConstraintType = BaseboneConstraintType3D.NONE;
+    else
+        mBaseboneConstraintType = BaseboneConstraintType3D.NONE;
 
     const thisBonePosition = this.v1;
     // const thisBoneScale = this.v2;
@@ -484,43 +552,62 @@ FABRIK.prototype.backward = function(
             }
             else if (jointType === JointType.LOCAL_HINGE)
             {
+                let relativeHingeRotationAxis = new Vector3();
+                let previousBone = proxy[loop - 1];
+                let previousBoneInnerToOuterUV = new Vector3();
+                previousBoneInnerToOuterUV.copy(thisBonePosition).addScaledVector(previousBone, -1).normalize();
                 // Transform the hinge rotation axis to be relative to the previous bone in the chain
                 // Vec3f hingeRotationAxis  = thisBoneJoint.getHingeRotationAxis();
 
+                let basisVector = new Vector3(0, 1, 0); // TODO debug
+                let q = new Quaternion();
+                q.setFromUnitVectors(basisVector, previousBoneInnerToOuterUV);
                 // Construct a rotation matrix based on the previous bone's direction
                 // Mat3f m = Mat3f.createRotationMatrix(prevBoneInnerToOuterUV);
 
+                relativeHingeRotationAxis.copy(limitation).applyQuaternion(q);
                 // Transform the hinge rotation axis into the previous bone's frame of reference
                 // Vec3f relativeHingeRotationAxis  = m.times(hingeRotationAxis).normalise();
 
-
+                thisBoneInnerToOuterUV.projectOnPlane(relativeHingeRotationAxis);
                 // Project this bone direction onto the plane described by the hinge rotation axis
                 // Note: The returned vector is normalised.
                 // thisBoneInnerToOuterUV = thisBoneInnerToOuterUV.projectOntoPlane(relativeHingeRotationAxis);
 
                 // Constrain rotation about reference axis if required
                 // float cwConstraintDegs   = -thisBoneJoint.getHingeClockwiseConstraintDegs();
+                let cwConstraintDegs   = rotationMin;
                 // float acwConstraintDegs  =  thisBoneJoint.getHingeAnticlockwiseConstraintDegs();
+                let acwConstraintDegs   = rotationMax;
                 // if ( !( Utils.approximatelyEquals(cwConstraintDegs, -FabrikJoint3D.MAX_CONSTRAINT_ANGLE_DEGS, 0.001f) ) &&
                 // !( Utils.approximatelyEquals(acwConstraintDegs, FabrikJoint3D.MAX_CONSTRAINT_ANGLE_DEGS, 0.001f) ) )
-                // {
+                if (cwConstraintDegs !== undefined || acwConstraintDegs !== undefined)
+                {
                     // Calc. the reference axis in local space
                     // Vec3f relativeHingeReferenceAxis = m.times( thisBoneJoint.getHingeReferenceAxis() ).normalise();
+                    let relativeHingeReferenceAxis = new Vector3();
+                    relativeHingeReferenceAxis.copy(basisVector);
 
                     // Get the signed angle (about the hinge rotation axis) between the hinge reference axis and the hinge-rotation aligned bone UV
                     // Note: ACW rotation is positive, CW rotation is negative.
                     // float signedAngleDegs = Vec3f.getSignedAngleBetweenDegs(relativeHingeReferenceAxis, thisBoneInnerToOuterUV, relativeHingeRotationAxis);
+                    let unsignedAngle = Math.acos(relativeHingeReferenceAxis.dot(thisBoneInnerToOuterUV));
+                    if (unsignedAngle < -1 || unsignedAngle > 1) console.log('error');
+                    let cross = new Vector3();
+                    cross.crossVectors(relativeHingeReferenceAxis, thisBoneInnerToOuterUV);
+                    let sign = Math.sign(cross.dot(relativeHingeRotationAxis));
+                    let signedAngleDegs = sign * unsignedAngle;
 
                     // Make our bone inner-to-outer UV the hinge reference axis rotated by its maximum clockwise or anticlockwise rotation as required
-                    // if (signedAngleDegs > acwConstraintDegs)
-                    // {
+                    if (acwConstraintDegs !== undefined && signedAngleDegs > acwConstraintDegs)
+                    {
                     //     thisBoneInnerToOuterUV = Vec3f.rotateAboutAxisDegs(relativeHingeReferenceAxis, acwConstraintDegs, relativeHingeRotationAxis).normalise();
-                    // }
-                    // else if (signedAngleDegs < cwConstraintDegs)
-                    // {
+                    }
+                    else if (cwConstraintDegs !== undefined && signedAngleDegs < cwConstraintDegs)
+                    {
                     //     thisBoneInnerToOuterUV = Vec3f.rotateAboutAxisDegs(relativeHingeReferenceAxis, cwConstraintDegs, relativeHingeRotationAxis).normalise();
-                    // }
-                // }
+                    }
+                }
 
             } // End of local hinge section
 
@@ -681,11 +768,14 @@ FABRIK.prototype.backward = function(
                 {
                     // FabrikJoint3D thisJoint  =  thisBone.getJoint();
                     // Vec3f hingeRotationAxis  =  mBaseboneRelativeConstraintUV;                   // Basebone relative constraint is our hinge rotation axis!
+                    let hingeRotationAxis = limitation;
                     // float cwConstraintDegs   = -thisJoint.getHingeClockwiseConstraintDegs();     // Clockwise rotation is negative!
                     // float acwConstraintDegs  =  thisJoint.getHingeAnticlockwiseConstraintDegs();
 
                     // Get the inner-to-outer direction of this bone and project it onto the global hinge rotation axis
                     // Vec3f thisBoneInnerToOuterUV = thisBone.getDirectionUV().projectOntoPlane(hingeRotationAxis);
+                    thisBoneInnerToOuterUV.copy(nextBonePosition).addScaledVector(thisBonePosition, -1).normalize();
+                    thisBoneInnerToOuterUV.projectOnPlane(hingeRotationAxis);
 
                     // If we have a local hinge which is not freely rotating then we must constrain about the reference axis
                     // if ( !( Utils.approximatelyEquals(cwConstraintDegs , -FabrikJoint3D.MAX_CONSTRAINT_ANGLE_DEGS, 0.01f) &&
@@ -710,8 +800,12 @@ FABRIK.prototype.backward = function(
                     // Calc and set the end location of this bone
                     // Vec3f newEndLocation = thisBone.getStartLocation().plus( thisBoneInnerToOuterUV.times(thisBoneLength) );
                     // thisBone.setEndLocation( newEndLocation );
+                    let newEndLocation = new Vector3();
+                    newEndLocation.copy(thisBone).addScaledVector(thisBoneInnerToOuterUV, thisBoneLength);
+                    thisEnd.copy(newEndLocation);
 
                     // Also, set the start location of the next bone to be the end location of this bone
+                    // [madblade] Unnecessary
                     // if (mChain.size() > 1) {
                     //     mChain.get(1).setStartLocation(newEndLocation);
                     // }
