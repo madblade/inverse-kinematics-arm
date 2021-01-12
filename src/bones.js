@@ -39,12 +39,12 @@ function createExample(scene, state)
 
             { id: 0 },
             { id: 1 },
-            { id: 2 },
+            // { id: 2 },
             // { id: 3 },
 
             // { id: 0, limitation: new Vector3( 1, 0, 0 )}
             // { id: 1, limitation: new Vector3( 0, 0, 1 ) },
-            // { id: 2, limitation: new Vector3( 0, 0, 1 ) },
+            { id: 2, limitation: new Vector3( 0, 0, 1 ) },
             { id: 3, limitation: (new Vector3( 1, 0, 0 )).normalize() },
             // { id: 3,
                 // rotationMin: new Vector3(-Math.PI / 2, -Math.PI / 2, -Math.PI / 2),
@@ -160,8 +160,8 @@ function createSkinnedMesh(sizing)
         emissive: 0x072534,
         side: DoubleSide,
         flatShading: true,
-        transparent: true,
-        opacity: 0.5
+        // transparent: true,
+        // opacity: 0.5
     });
 
     return new SkinnedMesh(skinnedMeshGeometry, skinnedMeshMaterial);
