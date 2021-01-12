@@ -1,7 +1,7 @@
 import './style.css';
 
 import {
-    AmbientLight,
+    AmbientLight, ArrowHelper,
     AxesHelper,
     BoxBufferGeometry,
     Color,
@@ -32,6 +32,10 @@ let state = {
     inverseBones: true
 };
 let mouse = new Vector2();
+let hinge = {
+    direction: new Vector3(1., 1., 1.),
+    origin: new Vector3(0., 0., 0.),
+};
 
 function init()
 {
@@ -40,7 +44,9 @@ function init()
     document.body.appendChild(container);
 
     // Renderer
-    renderer = new WebGLRenderer({antialias: true});
+    renderer = new WebGLRenderer({
+        antialias: true,
+    });
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(window.innerWidth, window.innerHeight);
     container.appendChild(renderer.domElement);
@@ -52,7 +58,7 @@ function init()
 
     // Scene, Camera, Controls, Lights
     scene = new Scene();
-    scene.background = new Color(0xffffff);
+    scene.background = new Color(0x000000);
     camera = new PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 2000);
     camera.position.z = 30;
     let controls = new OrbitControls(camera, renderer.domElement);
@@ -89,6 +95,10 @@ function init()
     let mouseMaterial = new MeshBasicMaterial({color: 0xff6e2d, opacity: 0.5});
     mouseHelper = new Mesh(mouseGeometry, mouseMaterial);
     scene.add(mouseHelper);
+
+    // let arrow = new ArrowHelper(hinge.direction, hinge.origin, 5);
+    // hinge.helper = arrow;
+    // scene.add(arrow);
 
     // X
     // SKINNED MESH EXAMPLE
@@ -163,7 +173,8 @@ function updateBonesInverse()
     // IK
     let chain = skeleton.bones;
     let constraints = skeleton.constraints;
-    solver.solve(Solver.FABRIK, chain, targetPoint, 20, constraints);
+    constraints.hinge = hinge;
+    solver.solve(Solver.FABRIK, chain, targetPoint, 10, constraints);
     // solver.solve(Solver.CCD, chain, targetPoint, 10, constraints);
 }
 

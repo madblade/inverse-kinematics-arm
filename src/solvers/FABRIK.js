@@ -10,6 +10,8 @@
 // from https://github.com/FedUni/caliko/
 
 import {
+    Matrix3,
+    Matrix4, Object3D,
     Quaternion, Vector3
 } from 'three';
 
@@ -34,7 +36,7 @@ function FABRIK()
 }
 
 const mSolveDistanceThreshold = 0.001; // 1.0;
-const mMinIterationChange = 0.01;
+const mMinIterationChange = 0.0001;
 const mFixedBaseMode = true;
 
 // TODO compute flops
@@ -49,8 +51,30 @@ FABRIK.prototype.solve = function(
     let lastPassSolveDistance = Number.MAX_VALUE;
     let currentSolveDistance = Number.MAX_VALUE;
 
-    // this.mFixedBaseLocation = chain[0].position;
     this.mFixedBaseLocation = constraints.fixedBaseLocation;
+
+    // Preprocess: anneal
+    const anneal = false;
+    if (anneal)
+    {
+        const proxies = constraints.chainProxy;
+        const boneLengths = constraints.boneLengths;
+        for (let  i = 0; i < proxies.length - 1; ++i)
+        {
+            let length = boneLengths[i];
+            let currentStart = proxies[i];
+            let currentEnd = proxies[i + 1];
+            if (i === 0)
+            {
+                currentStart.set(0, 0, 0);
+                currentEnd.set(0, length, 0);
+            }
+            else
+            {
+                currentEnd.set(0, length + currentStart.y, 0);
+            }
+        }
+    }
 
     // Allow up to our iteration limit attempts at solving the chain
     let solveDistance;
@@ -58,7 +82,6 @@ FABRIK.prototype.solve = function(
     for (loop = 0; loop < iterations; ++loop)
     {
         // Solve the chain for this target
-        // for (let i = 0; i < 10; ++i) // iterate a few times for now
         solveDistance = this.iterate(targetPoint, chain, constraints);
 
         // Did we solve it for distance? If so, update our best distance and best solution, and also
@@ -79,8 +102,8 @@ FABRIK.prototype.solve = function(
             // Did we grind to a halt? If so break out of loop to set the best distance and solution that we have
             if ( Math.abs(solveDistance - lastPassSolveDistance) < mMinIterationChange )
             {
-                //System.out.println("Ground to halt on iteration: " + loop);
-                break;
+                // console.log('Ground to halt on iteration: ' + loop);
+                // break;
             }
         }
 
@@ -112,15 +135,24 @@ FABRIK.prototype.solve = function(
     l.geometry.attributes.position.needsUpdate = true;
 
     // Update mesh by rebuilding the quaternion hierarchy
+    this.recomputeChainQuaternions(chain, constraints);
+
+    return currentSolveDistance;
+};
+
+FABRIK.prototype.recomputeChainQuaternions = function(
+    chain, constraints
+)
+{
     let proxies = constraints.chainProxy;
-    let currentV1 = this.v1;
-    let currentV2 = this.v2;
-    let currentQ = this.q1;
-    let lastQ = this.q2;
-    let t = this.v3;
-    let s = this.v4;
-    let nv1 = this.v5;
-    let nv2 = this.v6;
+    let currentV1 = new Vector3();
+    let currentV2 = new Vector3();
+    let currentQ = new Quaternion();
+    let lastQ = new Quaternion();
+    let t =   new Vector3();
+    let s =   new Vector3();
+    let nv1 = new Vector3();
+    let nv2 = new Vector3();
     for (let i = 0; i < chain.length - 1; ++i)
     {
         let currentBone = chain[i];
@@ -134,7 +166,9 @@ FABRIK.prototype.solve = function(
             currentV1.copy(currentV2);
 
         // current bone’s unit vector
-        currentV2.copy(currentEnd).addScaledVector(currentStart, -1).normalize();
+        currentV2.copy(currentEnd);
+        currentV2.addScaledVector(currentStart, -1);
+        currentV2.normalize();
 
         // compute quaternion transform from unit vector 1 to unit vector 2
         if (i === 0)
@@ -161,8 +195,6 @@ FABRIK.prototype.solve = function(
             currentBone.setRotationFromQuaternion(currentQ);
         }
     }
-
-    return currentSolveDistance;
 };
 
 FABRIK.prototype.iterate = function(
@@ -270,8 +302,7 @@ FABRIK.prototype.forward = function(
 
             // Get the outer-to-inner unit vector of this bone
             // Vec3f thisBoneOuterToInnerUV = thisBone.getDirectionUV().negated();
-            let nextBone = chain[loop + 1];
-            nextBone = proxy[loop + 1];
+            let nextBone = proxy[loop + 1];
             nextBonePosition.copy(nextBone);
             thisBoneOuterToInnerUV.copy(nextBonePosition).addScaledVector(thisBonePosition, -1).normalize().negate();
 
@@ -531,18 +562,36 @@ FABRIK.prototype.backward = function(
             else if (jointType === JointType.LOCAL_HINGE)
             {
                 let previousBone = proxy[loop - 1];
-                previousBoneInnerToOuterUV.copy(thisBonePosition).addScaledVector(previousBone, -1).normalize();
+                previousBoneInnerToOuterUV
+                    .copy(thisBonePosition)
+                    .addScaledVector(previousBone, -1)
+                    .normalize();
                 // Transform the hinge rotation axis to be relative to the previous bone in the chain
                 // Vec3f hingeRotationAxis  = thisBoneJoint.getHingeRotationAxis();
 
                 // Construct a rotation matrix based on the previous bone's direction
                 // Mat3f m = Mat3f.createRotationMatrix(prevBoneInnerToOuterUV);
-                basisVector.set(0, 1, 0);
-                q.setFromUnitVectors(basisVector, previousBoneInnerToOuterUV);
+                // basisVector.set(0, 1, 0);
+                // q.setFromUnitVectors(basisVector, previousBoneInnerToOuterUV);
+
+                // TODO optimize this utter horror
+                this.recomputeChainQuaternions(chain, constraints);
+                let mwi = new Matrix4();
+                let o = new Object3D();
+                mwi.copy(o.matrixWorld).invert();
+                let bm = new Matrix4();
+                bm.multiplyMatrices(mwi, chain[loop - 1].matrixWorld);
+                let q2 = new Quaternion();
+                bm.decompose(new Vector3(), q2, new Vector3());
+                q.setFromUnitVectors(new Vector3(0., 0., 1.), limitation);
+                q.premultiply(q2);
+                // q.premultiply(chain[loop - 1].quaternion);
 
                 // Transform the hinge rotation axis into the previous bone's frame of reference
                 // Vec3f relativeHingeRotationAxis  = m.times(hingeRotationAxis).normalise();
-                relativeHingeRotationAxis.copy(limitation).applyQuaternion(q);
+                relativeHingeRotationAxis.copy(limitation).applyQuaternion(q2);
+                // constraints.hinge.helper.position.copy(thisBonePosition);
+                // constraints.hinge.helper.setDirection(relativeHingeRotationAxis);
 
                 // Project this bone direction onto the plane described by the hinge rotation axis
                 // Note: The returned vector is normalised.
@@ -561,6 +610,9 @@ FABRIK.prototype.backward = function(
                     // Calc. the reference axis in local space
                     // Vec3f relativeHingeReferenceAxis = m.times( thisBoneJoint.getHingeReferenceAxis() ).normalise();
                     relativeHingeReferenceAxis.copy(basisVector); // TODO check, not sure.
+                    // let vvv = new Vector3();
+                    // vvv.copy(previousBoneInnerToOuterUV).applyQuaternion(q);
+                    // relativeHingeReferenceAxis.copy(vvv); // TODO check, not sure.
 
                     // Get the signed angle (about the hinge rotation axis) between the hinge reference axis and the hinge-rotation aligned bone UV
                     // Note: ACW rotation is positive, CW rotation is negative.
@@ -593,7 +645,6 @@ FABRIK.prototype.backward = function(
 
             // Set the new start joint location for this bone
             // thisBone.setEndLocation(newEndLocation);
-            // thisEnd.position.copy(newEndLocation);
             thisEnd.copy(newEndLocation);
 
             // If we are not working on the end effector bone, then we set the start joint location of the next bone in
@@ -614,16 +665,12 @@ FABRIK.prototype.backward = function(
             if (mFixedBaseMode)
             {
                 // thisBone.setStartLocation(mFixedBaseLocation);
-                // thisBone.position.copy(this.mFixedBaseLocation);
                 thisBone.copy(this.mFixedBaseLocation);
             }
             else // ...otherwise project it backwards from the end to the start by its length.
             {
                 // thisBone.setStartLocation( thisBone.getEndLocation().minus( thisBone.getDirectionUV().times(thisBoneLength) ) );
-                // let thisEnd = chain[loop + 1];
-                // thisEnd.matrixWorld.decompose(nextBonePosition, nextBoneQuaternion, nextBoneScale);
                 thisBoneInnerToOuterUV.copy(nextBonePosition).addScaledVector(thisBonePosition, -1).normalize();
-                // thisBone.position.copy(nextBonePosition).addScaledVector(thisBoneInnerToOuterUV, -thisBoneLength);
                 thisBone.copy(nextBonePosition).addScaledVector(thisBoneInnerToOuterUV, -thisBoneLength);
             }
 
