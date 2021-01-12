@@ -407,14 +407,27 @@ FABRIK.prototype.forward = function(
 
                     // Construct a rotation matrix based on the previous bones inner-to-to-inner direction...
                     // Mat3f m = Mat3f.createRotationMatrix( mChain.get(loop-1).getDirectionUV() );
-                    let previousBone = proxy[loop - 1];
-                    previousBoneInnerToOuterUV.copy(thisBonePosition).addScaledVector(previousBone, -1).normalize();
-                    basisVector.set(0, 1, 0);
-                    q.setFromUnitVectors(basisVector, previousBoneInnerToOuterUV);
+                    // TODO optimize this horror
+                    this.recomputeChainQuaternions(chain, constraints);
+                    let mwi = new Matrix4();
+                    let o = new Object3D();
+                    mwi.copy(o.matrixWorld).invert();
+                    let bm = new Matrix4();
+                    bm.multiplyMatrices(mwi, chain[loop - 1].matrixWorld);
+                    let q2 = new Quaternion();
+                    bm.decompose(new Vector3(), q2, new Vector3());
+                    q.setFromUnitVectors(new Vector3(0., 0., 1.), limitation);
+                    q.premultiply(q2);
+                    relativeHingeRotationAxis.copy(limitation).applyQuaternion(q2);
+
+                    // let previousBone = proxy[loop - 1];
+                    // previousBoneInnerToOuterUV.copy(thisBonePosition).addScaledVector(previousBone, -1).normalize();
+                    // basisVector.set(0, 1, 0);
+                    // q.setFromUnitVectors(basisVector, previousBoneInnerToOuterUV);
 
                     // ...and transform the hinge rotation axis into the previous bones frame of reference.
                     // Vec3f relativeHingeRotationAxis = m.times( thisBoneJoint.getHingeRotationAxis() ).normalise();
-                    relativeHingeRotationAxis.copy(limitation).applyQuaternion(q);
+                    // relativeHingeRotationAxis.copy(limitation).applyQuaternion(q);
 
                     // Project this bone's outer-to-inner direction onto the plane described by the relative hinge rotation axis
                     // Note: The returned vector is normalised.
@@ -585,11 +598,10 @@ FABRIK.prototype.backward = function(
                 bm.decompose(new Vector3(), q2, new Vector3());
                 q.setFromUnitVectors(new Vector3(0., 0., 1.), limitation);
                 q.premultiply(q2);
-                // q.premultiply(chain[loop - 1].quaternion);
+                relativeHingeRotationAxis.copy(limitation).applyQuaternion(q2);
 
                 // Transform the hinge rotation axis into the previous bone's frame of reference
                 // Vec3f relativeHingeRotationAxis  = m.times(hingeRotationAxis).normalise();
-                relativeHingeRotationAxis.copy(limitation).applyQuaternion(q2);
                 // constraints.hinge.helper.position.copy(thisBonePosition);
                 // constraints.hinge.helper.setDirection(relativeHingeRotationAxis);
 
