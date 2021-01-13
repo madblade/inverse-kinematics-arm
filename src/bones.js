@@ -53,20 +53,20 @@ function createExample(scene, state)
             //     rotationMax: new Vector3(Math.PI / 2, Math.PI / 2, Math.PI / 2)
             // },
             // { id: 2 },
-            // { id: 2, limitation: new Vector3( 0, 0, 1 ) },
-            // { id: 3, limitation: (new Vector3( 1, 0, 0 )) },
+            { id: 2, limitation: new Vector3( 0, 0, 1 ) },
+            { id: 3, limitation: (new Vector3( 1, 0, 0 )) },
 
-            { id: 2,
-                limitation: new Vector3( 1, 0, 0 ),
-                rotationMin: new Vector3(-Math.PI / 4, -Math.PI / 4, -Math.PI / 4),
-                rotationMax: new Vector3(Math.PI / 4, Math.PI / 4, Math.PI / 4)
-            },
+            // { id: 2,
+            //     limitation: new Vector3( 1, 0, 0 ),
+            //     rotationMin: new Vector3(-Math.PI / 4, -Math.PI / 4, -Math.PI / 4),
+            //     rotationMax: new Vector3(Math.PI / 4, Math.PI / 4, Math.PI / 4)
+            // },
             // { id: 3,
             //     limitation: new Vector3( 1, 0, 0 ),
             //     rotationMin: new Vector3(-Math.PI / 2, -Math.PI / 2, -Math.PI / 2),
             //     rotationMax: new Vector3(Math.PI / 2, Math.PI / 2, Math.PI / 2)
             // },
-            { id: 3 },
+            // { id: 3 },
         ],
         minAngle: 0.,
         maxAngle: 1.0

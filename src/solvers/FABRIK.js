@@ -78,18 +78,28 @@ FABRIK.prototype.solve = function(
             let link = chain[i];
             link.matrixWorld.decompose(linkPos, invLinkQ, linkScale);
             proxies[i].copy(linkPos);
-            // let length = boneLengths[i];
-            // let currentStart = proxies[i];
-            // let currentEnd = proxies[i + 1];
-            // if (i === 0)
-            // {
-            //     currentStart.set(0, 0, 0);
-            //     currentEnd.set(0, length, 0);
-            // }
-            // else
-            // {
-            //     currentEnd.set(0, length + currentStart.y, 0);
-            // }
+        }
+    }
+
+    const annealOnce = false;
+    if (annealOnce)
+    {
+        const proxies = constraints.chainProxy;
+        const boneLengths = constraints.boneLengths;
+        for (let  i = 0; i < proxies.length; ++i)
+        {
+            let length = boneLengths[i];
+            let currentStart = proxies[i];
+            let currentEnd = proxies[i + 1];
+            if (i === 0)
+            {
+                currentStart.set(0, 0, 0);
+                currentEnd.set(0, length, 0);
+            }
+            else
+            {
+                currentEnd.set(0, length + currentStart.y, 0);
+            }
         }
     }
 
