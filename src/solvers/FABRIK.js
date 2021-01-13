@@ -143,7 +143,9 @@ FABRIK.prototype.solve = function(
     }
     l.geometry.attributes.position.needsUpdate = true;
 
-    // Mesh is updated internally by rebuilding the quaternion hierarchy
+    // Mesh is updated internally by rebuilding the quaternion hierarchy but we need to do it
+    // one final time here.
+    this.recomputeChainQuaternions(chain, constraints);
 
     return currentSolveDistance;
 };
@@ -233,8 +235,7 @@ const BaseboneConstraintType3D = {
     NONE: 0,
     LOCAL_HINGE: 1,
     GLOBAL_HINGE: 2,
-    LOCAL_ROTOR: 3,
-    GLOBAL_ROTOR: 4,
+    // N.B. Rotor unsupported.
 }
 
 // chain: contains bones (usually from base to effector)
@@ -284,10 +285,7 @@ FABRIK.prototype.forward = function(
         // Get the length of the bone we're working on
         let thisBone = proxy[loop];
         thisBonePosition.copy(thisBone);
-        // let thisBoneLength = thisBone.length();
         let thisBoneLength = boneLengths[loop];
-        // FabrikJoint3D thisBoneJoint = thisBone.getJoint();
-        // JointType thisBoneJointType = thisBone.getJointType();
         let thisBoneJointType;
 
         const link = links[loop];
@@ -318,6 +316,7 @@ FABRIK.prototype.forward = function(
             // Get the joint type for this bone and handle constraints on thisBoneInnerToOuterUV
             if (thisBoneJointType === JointType.BALL)
             {
+                // TODO Ball Joints
                 // Constrain to relative angle between this bone and the outer bone if required
                 // float angleBetweenDegs    = Vec3f.getAngleBetweenDegs(outerBoneOuterToInnerUV, thisBoneOuterToInnerUV);
                 // float constraintAngleDegs = thisBoneJoint.getBallJointConstraintDegs();
@@ -330,57 +329,48 @@ FABRIK.prototype.forward = function(
             {
                 // Project this bone outer-to-inner direction onto the hinge rotation axis
                 // Note: The returned vector is normalised.
-                // thisBoneOuterToInnerUV = thisBoneOuterToInnerUV.projectOntoPlane( thisBoneJoint.getHingeRotationAxis() );
+                // thisBoneOuterToInnerUV.projectOntoPlane( hingeRotationAxis );
 
-                // NOTE: Constraining about the hinge reference axis on this forward pass leads to poor solutions... so we won't.
+                // NOTE: Constraining about the hinge reference axis on this forward pass leads to poor solutions...
+                // so we won't.
             }
             else if (thisBoneJointType === JointType.LOCAL_HINGE)
             {
-                // Not a basebone? Then construct a rotation matrix based on the previous bones inner-to-to-inner direction...
-                // Mat3f m;
-                // Vec3f relativeHingeRotationAxis;
+                // Not a basebone? Then construct the local transform...
                 if (loop > 0)
                 {
-                    // m = Mat3f.createRotationMatrix( mChain.get(loop-1).getDirectionUV() );
-                    // relativeHingeRotationAxis = m.times( thisBoneJoint.getHingeRotationAxis() ).normalise();
                     this.computeLocalTransform(localTransform, loop, chain);
+
+                    // ...don’t forget to transform the hinge rotation axis into the previous bones frame of reference.
                     relativeHingeRotationAxis.copy(limitation).applyQuaternion(localTransform);
                 }
-                else // ...basebone? Need to construct matrix from the relative constraint UV.
+                else // ...basebone? Need to construct the transform from the relative constraint UV.
                 {
-                    // [madblade]: I think there’s no need to do that
                     // relativeHingeRotationAxis = mBaseboneRelativeConstraintUV;
+                    relativeHingeRotationAxis.copy(limitation);
                 }
 
-                // ...and transform the hinge rotation axis into the previous bones frame of reference.
-                //Vec3f
-
-                // Project this bone's outer-to-inner direction onto the plane described by the relative hinge rotation axis
+                // Project this bone's outer-to-inner direction onto the plane described by
+                // the relative hinge rotation axis
                 // Note: The returned vector is normalised.
-                // thisBoneOuterToInnerUV = thisBoneOuterToInnerUV.projectOntoPlane(relativeHingeRotationAxis);
                 thisBoneOuterToInnerUV.projectOnPlane(relativeHingeRotationAxis).normalize();
 
-                // NOTE: Constraining about the hinge reference axis on this forward pass leads to poor solutions... so we won't.
+                // NOTE: Constraining about the hinge reference axis on this forward pass leads to poor solutions...
+                // so we won't.
             }
 
             // At this stage we have a outer-to-inner unit vector for this bone which is within our constraints,
             // so we can set the new inner joint location to be the end joint location of this bone plus the
             // outer-to-inner direction unit vector multiplied by the length of the bone.
-            // Vec3f newStartLocation = thisBone.getEndLocation().plus( thisBoneOuterToInnerUV.times(thisBoneLength) );
             newStartLocation.copy(nextBonePosition).addScaledVector(thisBoneOuterToInnerUV, thisBoneLength);
 
             // Set the new start joint location for this bone
-            // thisBone.setStartLocation(newStartLocation);
             thisBone.copy(newStartLocation);
 
-            // [madblade] I think there’s no need to do the following.
             // If we are not working on the basebone, then we also set the end joint location of
             // the previous bone in the chain (i.e. the bone closer to the base) to be the new
             // start joint location of this bone.
-            // if (loop > 0)
-            // {
-            //     mChain.get(loop-1).setEndLocation(newStartLocation);
-            // }
+            // [madblade] No need to do that in our implicit bones setup.
         }
 
         // ######
@@ -388,17 +378,13 @@ FABRIK.prototype.forward = function(
         else if (loop === chainLength - 1)
         {
             // Snap the end effector's end location to the target
-            // thisBone.setEndLocation(target);
             let endEffector = proxy[loop + 1];
             endEffector.copy(targetPoint);
 
             // Get the UV between the target / end-location (which are now the same) and the start location of this bone
-            // Vec3f thisBoneOuterToInnerUV = thisBone.getDirectionUV().negated();
             nextBonePosition.copy(endEffector);
-            thisBoneOuterToInnerUV.copy(nextBonePosition)
-                .addScaledVector(thisBonePosition, -1)
-                .normalize()
-                .negate();
+            thisBoneOuterToInnerUV.copy(nextBonePosition).addScaledVector(thisBonePosition, -1)
+                .normalize().negate();
 
             // If the end effector is global hinged then we have to snap to it, then keep that
             // resulting outer-to-inner UV in the plane of the hinge rotation axis
@@ -407,44 +393,40 @@ FABRIK.prototype.forward = function(
                 case JointType.BALL:
                     // Ball joints do not get constrained on this forward pass
                     break;
-                case JointType.GLOBAL_HINGE:
-                    // Global hinges get constrained to the hinge rotation axis, but not the reference axis within the hinge plane
-                    // thisBoneOuterToInnerUV = thisBoneOuterToInnerUV.projectOntoPlane( thisBoneJoint.getHingeRotationAxis() );
-                    break;
-                case JointType.LOCAL_HINGE:
-                    // Local hinges get constrained to the hinge rotation axis, but not the reference axis within the hinge plane
 
-                    // Construct a rotation matrix based on the previous bones inner-to-to-inner direction...
-                    // Mat3f m = Mat3f.createRotationMatrix( mChain.get(loop-1).getDirectionUV() );
+                case JointType.GLOBAL_HINGE:
+                    // Global hinges get constrained to the hinge rotation axis,
+                    // but not the reference axis within the hinge plane
+                    // thisBoneOuterToInnerUV.projectOnPlane( hingeRotationAxis );
+                    break;
+
+                case JointType.LOCAL_HINGE:
+                    // Local hinges get constrained to the hinge rotation axis,
+                    // but not the reference axis within the hinge plane
+
+                    // Get rotation transform...
                     this.computeLocalTransform(localTransform, loop, chain);
 
                     // ...and transform the hinge rotation axis into the previous bones frame of reference.
-                    // Vec3f relativeHingeRotationAxis = m.times( thisBoneJoint.getHingeRotationAxis() ).normalise();
                     relativeHingeRotationAxis.copy(limitation).applyQuaternion(localTransform);
 
-                    // Project this bone's outer-to-inner direction onto the plane described by the relative hinge rotation axis
+                    // Project this bone's outer-to-inner direction onto the plane described
+                    // by the relative hinge rotation axis
                     // Note: The returned vector is normalised.
-                    // thisBoneOuterToInnerUV = thisBoneOuterToInnerUV.projectOntoPlane(relativeHingeRotationAxis);
                     thisBoneOuterToInnerUV.projectOnPlane(relativeHingeRotationAxis).normalize();
                     break;
             }
 
             // Calculate the new start joint location as the end joint location plus the outer-to-inner direction UV
             // multiplied by the length of the bone.
-            // Vec3f newStartLocation = target.plus( thisBoneOuterToInnerUV.times(thisBoneLength) );
             newStartLocation.copy(targetPoint).addScaledVector(thisBoneOuterToInnerUV, thisBoneLength);
 
             // Set the new start joint location for this bone to be new start location...
-            // thisBone.setStartLocation(newStartLocation);
             thisBone.copy(newStartLocation);
 
-            // ...and set the end joint location of the bone further in to also be at the new start location (if there IS a bone
-            // further in - this may be a single bone chain)
+            // ...and set the end joint location of the bone further in to also be at the new start location
+            // (if there IS a bone further in - this may be a single bone chain)
             // [madblade] No need to do that in our setup.
-            // if (loop > 0)
-            // {
-            //     mChain.get(loop-1).setEndLocation(newStartLocation);
-            // }
         }
     } // End of forward pass
 };
@@ -472,7 +454,7 @@ FABRIK.prototype.backward = function(
     const boneLengths = constraints.boneLengths;
     const chainLength = chain.length - 1; // end bone === end effector!
 
-    // compute base bone constraint
+    // Compute base bone constraint.
     let mBaseboneConstraintType = BaseboneConstraintType3D.NONE;
     const base = constraints.links[0];
     if (base.id !== 0) throw Error('Please specify all links in the constraints array.');
@@ -491,8 +473,6 @@ FABRIK.prototype.backward = function(
 
     for (let loop = 0; loop < chainLength; ++loop)
     {
-        // FabrikBone3D thisBone = mChain.get(loop);
-        // float thisBoneLength  = thisBone.length();
         let thisBone = proxy[loop];
         let thisBoneLength = boneLengths[loop];
         thisBonePosition.copy(thisBone);
@@ -510,26 +490,21 @@ FABRIK.prototype.backward = function(
             thisBoneInnerToOuterUV.copy(nextBonePosition).addScaledVector(thisBonePosition, -1).normalize();
             prevBoneInnerToOuterUV.copy(thisBonePosition).addScaledVector(previousBonePosition, -1).normalize();
 
-            // Dealing with a ball joint?
-            // FabrikJoint3D thisBoneJoint = thisBone.getJoint();
-            // JointType jointType = thisBoneJoint.getJointType();
             let jointType;
-
             const link = constraints.links[loop];
             const id = link.id;
             if (id !== loop) throw Error('Please specify all links in the constraints array.');
             const limitation = link.limitation;
             const rotationMin = link.rotationMin;
             const rotationMax = link.rotationMax;
-            if (limitation)
-                jointType = JointType.LOCAL_HINGE;
-            else if (rotationMin || rotationMax)
-                jointType = JointType.BALL;
-            else
-                jointType = JointType.BALL;
+            if (limitation) jointType = JointType.LOCAL_HINGE;
+            else if (rotationMin || rotationMax) jointType = JointType.BALL;
+            else jointType = JointType.BALL;
 
+            // Dealing with a ball joint?
             if (jointType === JointType.BALL)
             {
+                // TODO Ball Joint
                 // float angleBetweenDegs    = Vec3f.getAngleBetweenDegs(prevBoneInnerToOuterUV, thisBoneInnerToOuterUV);
                 // float constraintAngleDegs = thisBoneJoint.getBallJointConstraintDegs();
 
@@ -598,6 +573,7 @@ FABRIK.prototype.backward = function(
                 let acwConstraintDegs   = rotationMax;
                 // if ( !( Utils.approximatelyEquals(cwConstraintDegs, -FabrikJoint3D.MAX_CONSTRAINT_ANGLE_DEGS, 0.001f) ) &&
                 // !( Utils.approximatelyEquals(acwConstraintDegs, FabrikJoint3D.MAX_CONSTRAINT_ANGLE_DEGS, 0.001f) ) )
+                // TODO this. combined constraint. ugh.
                 if (cwConstraintDegs !== undefined || acwConstraintDegs !== undefined)
                 {
                     // Calc. the reference axis in local space
@@ -631,18 +607,14 @@ FABRIK.prototype.backward = function(
             // At this stage we have a outer-to-inner unit vector for this bone which is within our constraints,
             // so we can set the new inner joint location to be the end joint location of this bone plus the
             // outer-to-inner direction unit vector multiplied by the length of the bone.
-            // Vec3f newEndLocation = thisBone.getStartLocation().plus( thisBoneInnerToOuterUV.times(thisBoneLength) );
             newEndLocation.copy(thisBonePosition).addScaledVector(thisBoneInnerToOuterUV, thisBoneLength);
 
             // Set the new start joint location for this bone
-            // thisBone.setEndLocation(newEndLocation);
             thisEnd.copy(newEndLocation);
 
             // If we are not working on the end effector bone, then we set the start joint location of the next bone in
             // the chain (i.e. the bone closer to the target) to be the new end joint location of this bone.
-            // if (loop < chainLength - 1) {
-            //     mChain.get(loop+1).setStartLocation(newEndLocation);
-            // }
+            // [madblade] Still no need to do that for implicit bones.
         }
 
         // ######
@@ -655,12 +627,10 @@ FABRIK.prototype.backward = function(
             // If the base location is fixed then snap the start location of the basebone back to the fixed base...
             if (mFixedBaseMode)
             {
-                // thisBone.setStartLocation(mFixedBaseLocation);
                 thisBone.copy(this.mFixedBaseLocation);
             }
             else // ...otherwise project it backwards from the end to the start by its length.
             {
-                // thisBone.setStartLocation( thisBone.getEndLocation().minus( thisBone.getDirectionUV().times(thisBoneLength) ) );
                 thisBoneInnerToOuterUV.copy(nextBonePosition).addScaledVector(thisBonePosition, -1).normalize();
                 thisBone.copy(nextBonePosition).addScaledVector(thisBoneInnerToOuterUV, -thisBoneLength);
             }
@@ -672,70 +642,14 @@ FABRIK.prototype.backward = function(
             {
                 // Set the new end location of this bone, and if there are more bones,
                 // then set the start location of the next bone to be the end location of this bone
-                // Vec3f newEndLocation = thisBone.getStartLocation().plus( thisBone.getDirectionUV().times(thisBoneLength) );
                 thisBoneInnerToOuterUV.copy(nextBonePosition).addScaledVector(thisBonePosition, -1).normalize();
                 newEndLocation.copy(thisBone).addScaledVector(thisBoneInnerToOuterUV, thisBoneLength);
 
-                // thisBone.setEndLocation(newEndLocation);
                 thisEnd.copy(newEndLocation);
-
-                // if (mChain.size() > 1) {
-                //     mChain.get(1).setStartLocation(newEndLocation);
-                // }
             }
             else // ...otherwise we must constrain it to the basebone constraint unit vector
             {
-                if (mBaseboneConstraintType === BaseboneConstraintType3D.GLOBAL_ROTOR)
-                {
-                    // Get the inner-to-outer direction of this bone
-                    // Vec3f thisBoneInnerToOuterUV = thisBone.getDirectionUV();
-
-                    // float angleBetweenDegs    = Vec3f.getAngleBetweenDegs(mBaseboneConstraintUV, thisBoneInnerToOuterUV);
-                    // float constraintAngleDegs = thisBone.getBallJointConstraintDegs();
-
-                    // if (angleBetweenDegs > constraintAngleDegs)
-                    // {
-                    //     thisBoneInnerToOuterUV = Vec3f.getAngleLimitedUnitVectorDegs(thisBoneInnerToOuterUV, mBaseboneConstraintUV, constraintAngleDegs);
-                    // }
-
-                    // Vec3f newEndLocation = thisBone.getStartLocation().plus( thisBoneInnerToOuterUV.times(thisBoneLength) );
-
-                    // thisBone.setEndLocation( newEndLocation );
-
-                    // Also, set the start location of the next bone to be the end location of this bone
-                    // if (mChain.size() > 1) {
-                    //     mChain.get(1).setStartLocation(newEndLocation);
-                    // }
-                }
-                else if (mBaseboneConstraintType === BaseboneConstraintType3D.LOCAL_ROTOR)
-                {
-                    // Note: The mBaseboneRelativeConstraintUV is updated in the FabrikStructure3D.solveForTarget()
-                    // method BEFORE this FabrikChain3D.solveForTarget() method is called. We no knowledge of the
-                    // direction of the bone we're connected to in another chain and so cannot calculate this
-                    // relative basebone constraint direction on our own, but the FabrikStructure3D does it for
-                    // us so we are now free to use it here.
-
-                    // Get the inner-to-outer direction of this bone
-                    // Vec3f thisBoneInnerToOuterUV = thisBone.getDirectionUV();
-
-                    // Constrain about the relative basebone constraint unit vector as neccessary
-                    // float angleBetweenDegs    = Vec3f.getAngleBetweenDegs(mBaseboneRelativeConstraintUV, thisBoneInnerToOuterUV);
-                    // float constraintAngleDegs = thisBone.getBallJointConstraintDegs();
-                    // if (angleBetweenDegs > constraintAngleDegs)
-                    // {
-                    //     thisBoneInnerToOuterUV = Vec3f.getAngleLimitedUnitVectorDegs(thisBoneInnerToOuterUV, mBaseboneRelativeConstraintUV, constraintAngleDegs);
-                    // }
-
-                    // Set the end location
-                    // Vec3f newEndLocation = thisBone.getStartLocation().plus( thisBoneInnerToOuterUV.times(thisBoneLength) );
-                    // thisBone.setEndLocation( newEndLocation );
-
-                    // Also, set the start location of the next bone to be the end location of this bone
-                    // if (mChain.size() > 1) {
-                    //     mChain.get(1).setStartLocation(newEndLocation);
-                    // }
-                }
-                else if (mBaseboneConstraintType === BaseboneConstraintType3D.GLOBAL_HINGE)
+                if (mBaseboneConstraintType === BaseboneConstraintType3D.GLOBAL_HINGE)
                 {
                     // FabrikJoint3D thisJoint  =  thisBone.getJoint();
                     // Vec3f hingeRotationAxis  =  thisJoint.getHingeRotationAxis();
@@ -787,6 +701,7 @@ FABRIK.prototype.backward = function(
                     thisBoneInnerToOuterUV.copy(nextBonePosition).addScaledVector(thisBonePosition, -1).normalize();
                     thisBoneInnerToOuterUV.projectOnPlane(hingeRotationAxis).normalize();
 
+                    // TODO double constraint UGH.
                     // If we have a local hinge which is not freely rotating then we must constrain about the reference axis
                     // if ( !( Utils.approximatelyEquals(cwConstraintDegs , -FabrikJoint3D.MAX_CONSTRAINT_ANGLE_DEGS, 0.01f) &&
                     // Utils.approximatelyEquals(acwConstraintDegs,  FabrikJoint3D.MAX_CONSTRAINT_ANGLE_DEGS, 0.01f) ) )
@@ -808,16 +723,11 @@ FABRIK.prototype.backward = function(
                     // }
 
                     // Calc and set the end location of this bone
-                    // Vec3f newEndLocation = thisBone.getStartLocation().plus( thisBoneInnerToOuterUV.times(thisBoneLength) );
-                    // thisBone.setEndLocation( newEndLocation );
                     newEndLocation.copy(thisBone).addScaledVector(thisBoneInnerToOuterUV, thisBoneLength);
                     thisEnd.copy(newEndLocation);
 
                     // Also, set the start location of the next bone to be the end location of this bone
-                    // [madblade] Unnecessary
-                    // if (mChain.size() > 1) {
-                    //     mChain.get(1).setStartLocation(newEndLocation);
-                    // }
+                    // [madblade] (unnecessary)
                 }
 
             } // End of basebone constraint handling section
