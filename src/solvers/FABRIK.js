@@ -48,7 +48,8 @@ FABRIK.prototype.solve = function(
     chain,
     targetPoint,
     iterations,
-    constraints
+    constraints,
+    activateConstraints
 )
 {
     let bestSolveDistance = Number.MAX_VALUE;
@@ -62,26 +63,33 @@ FABRIK.prototype.solve = function(
     if (!root) throw Error('Bone chain must be attached to a SkinnedMesh.');
     matrixWorldInverse.copy(root.matrixWorld).invert();
 
-    // Preprocess: anneal
-    const annealOnce = false;
-    if (annealOnce)
+    let invLinkQ = this.q1;
+    let linkPos = this.v1;
+    let linkScale = this.v2;
+
+    // Preprocess
+    const copyFromChain = true;
+    if (copyFromChain)
     {
         const proxies = constraints.chainProxy;
         const boneLengths = constraints.boneLengths;
-        for (let  i = 0; i < proxies.length - 1; ++i)
+        for (let  i = 0; i < proxies.length; ++i)
         {
-            let length = boneLengths[i];
-            let currentStart = proxies[i];
-            let currentEnd = proxies[i + 1];
-            if (i === 0)
-            {
-                currentStart.set(0, 0, 0);
-                currentEnd.set(0, length, 0);
-            }
-            else
-            {
-                currentEnd.set(0, length + currentStart.y, 0);
-            }
+            let link = chain[i];
+            link.matrixWorld.decompose(linkPos, invLinkQ, linkScale);
+            proxies[i].copy(linkPos);
+            // let length = boneLengths[i];
+            // let currentStart = proxies[i];
+            // let currentEnd = proxies[i + 1];
+            // if (i === 0)
+            // {
+            //     currentStart.set(0, 0, 0);
+            //     currentEnd.set(0, length, 0);
+            // }
+            // else
+            // {
+            //     currentEnd.set(0, length + currentStart.y, 0);
+            // }
         }
     }
 
@@ -91,7 +99,7 @@ FABRIK.prototype.solve = function(
     for (loop = 0; loop < iterations; ++loop)
     {
         // Solve the chain for this target
-        solveDistance = this.iterate(targetPoint, chain, constraints);
+        solveDistance = this.iterate(targetPoint, chain, constraints, activateConstraints, loop);
 
         // Did we solve it for distance? If so, update our best distance and best solution, and also
         // update our last pass solve distance. Note: We will ALWAYS beat our last solve distance on the first run.
@@ -126,10 +134,6 @@ FABRIK.prototype.solve = function(
     // Update our solve distance and chain configuration to the best solution found
     currentSolveDistance = bestSolveDistance;
     // mChain = bestSolution;
-
-    // Update our base and target locations
-    // mLastBaseLocation.set( getBaseLocation() );
-    // mLastTargetLocation.set(newTarget);
 
     // Update helper
     let l = constraints.line;
@@ -208,16 +212,16 @@ FABRIK.prototype.recomputeChainQuaternions = function(
 };
 
 FABRIK.prototype.iterate = function(
-    targetPoint, chain, constraints
+    targetPoint, chain, constraints, activateConstraints, passNumber
 )
 {
     if (chain.length < 1) throw Error('0 bones');
 
     // fw pass
-    this.forward(targetPoint, chain, constraints);
+    this.forward(targetPoint, chain, constraints, activateConstraints, passNumber);
 
     // bw pass
-    this.backward(targetPoint, chain, constraints);
+    this.backward(targetPoint, chain, constraints, activateConstraints, passNumber);
 
     // compute distance from end to target
     const endIndex = chain.length - 1;
@@ -226,6 +230,7 @@ FABRIK.prototype.iterate = function(
 };
 
 const JointType = {
+    NONE: -1,
     BALL: 0,
     LOCAL_HINGE: 1,
     GLOBAL_HINGE: 2,
@@ -259,7 +264,9 @@ const BaseboneConstraintType3D = {
 FABRIK.prototype.forward = function(
     targetPoint,
     chain,
-    constraints
+    constraints,
+    activateConstraints,
+    passNumber
 )
 {
     const thisBonePosition = this.v1;
@@ -269,7 +276,6 @@ FABRIK.prototype.forward = function(
     const nextBoneOuterToInnerUV = this.v4;
     const relativeHingeRotationAxis = this.v6;
     const newStartLocation = this.v7;
-    const correctionAxis = this.v8;
 
     const localTransform = this.q1;
     const correctionQuaternion = this.q2;
@@ -280,7 +286,8 @@ FABRIK.prototype.forward = function(
     const links = constraints.links;
 
     // Rebuild chain angles from proxy vectors
-    this.recomputeChainQuaternions(chain, constraints);
+    if (passNumber >= 0)
+        this.recomputeChainQuaternions(chain, constraints);
 
     // Loop over all bones in the chain, from the end effector (numBones-1) back to the basebone (0)
     for (let loop = chainLength - 1; loop >= 0; --loop)
@@ -298,7 +305,9 @@ FABRIK.prototype.forward = function(
         const limitation = link.limitation;
         const rotationMin = link.rotationMin;
         const rotationMax = link.rotationMax;
-        if (limitation)
+        if (!activateConstraints)
+            thisBoneJointType = JointType.NONE;
+        else if (limitation)
             thisBoneJointType = JointType.LOCAL_HINGE;
         else if (rotationMin || rotationMax)
             thisBoneJointType = JointType.BALL;
@@ -435,7 +444,11 @@ FABRIK.prototype.forward = function(
 
 // ---------- Backward pass from base to end effector -----------
 FABRIK.prototype.backward = function(
-    targetPoint, chain, constraints
+    targetPoint,
+    chain,
+    constraints,
+    activateConstraints,
+    passNumber
 )
 {
     const thisBonePosition = this.v1;
@@ -463,7 +476,9 @@ FABRIK.prototype.backward = function(
     const limitation = base.limitation;
     const rotationMin = base.rotationMin; // unsupported?
     const rotationMax = base.rotationMax;
-    if (limitation)
+    if (!activateConstraints)
+        mBaseboneConstraintType = BaseboneConstraintType3D.NONE;
+    else if (limitation)
         mBaseboneConstraintType = BaseboneConstraintType3D.LOCAL_HINGE;
     else if (rotationMin || rotationMax)
         mBaseboneConstraintType = BaseboneConstraintType3D.NONE;
@@ -471,7 +486,8 @@ FABRIK.prototype.backward = function(
         mBaseboneConstraintType = BaseboneConstraintType3D.NONE;
 
     // Rebuild chain angles from proxy vectors
-    this.recomputeChainQuaternions(chain, constraints);
+    if (passNumber >= 0)
+        this.recomputeChainQuaternions(chain, constraints);
 
     for (let loop = 0; loop < chainLength; ++loop)
     {
@@ -497,7 +513,8 @@ FABRIK.prototype.backward = function(
             const limitation = link.limitation;
             const rotationMin = link.rotationMin;
             const rotationMax = link.rotationMax;
-            if (limitation) jointType = JointType.LOCAL_HINGE;
+            if (!activateConstraints) jointType = JointType.NONE;
+            else if (limitation) jointType = JointType.LOCAL_HINGE;
             else if (rotationMin || rotationMax) jointType = JointType.BALL;
             else jointType = JointType.BALL;
 

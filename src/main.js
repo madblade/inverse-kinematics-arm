@@ -152,6 +152,7 @@ function updateBonesForward()
 // INVERSE KINEMATICS
 
 let targetPoint = new Vector3(0, 10, 0);
+let mouseHasMoved = false;
 function onMouseMove(event)
 {
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -165,6 +166,7 @@ function onMouseMove(event)
 
     targetPoint.copy(intersects[0].point);
     mouseHelper.position.copy(targetPoint);
+    mouseHasMoved = true;
 }
 
 let solver = new IKSolver();
@@ -174,8 +176,14 @@ function updateBonesInverse()
     let chain = skeleton.bones;
     let constraints = skeleton.constraints;
     constraints.hinge = hinge;
-    solver.solve(Solver.FABRIK, chain, targetPoint, 10, constraints);
-    // solver.solve(Solver.CCD, chain, targetPoint, 10, constraints);
+
+    if (mouseHasMoved)
+    {
+        solver.solve(Solver.FABRIK, chain, targetPoint, 2, constraints, false);
+        solver.solve(Solver.CCD, chain, targetPoint, 10, constraints, true);
+    }
+
+    mouseHasMoved = false;
 }
 
 // Entry

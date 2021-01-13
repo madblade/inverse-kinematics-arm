@@ -27,7 +27,8 @@ CCD.prototype.solve = function(
     chain,
     targetPoint,
     iterations,
-    constraints
+    constraints,
+    activateConstraints
 )
 {
     let bones = chain; // skeleton.bones;
@@ -49,6 +50,7 @@ CCD.prototype.solve = function(
             ik,
             effector,
             targetPoint, targetPos,
+            activateConstraints
         );
         if (!rotated) break;
     }
@@ -59,6 +61,7 @@ CCD.prototype.iterate = function(
     ik,
     effector,
     targetPoint, targetPos,
+    activateConstraints
 )
 {
     let math = Math; // reference overhead reduction in loop
@@ -129,7 +132,7 @@ CCD.prototype.iterate = function(
         // ? think about this slerp function.
         // link.quaternion.slerp(qq, 0.05);
 
-        if (limitation !== undefined) {
+        if (activateConstraints && limitation !== undefined) {
             // TODO reconsider limitation specification
             let c = link.quaternion.w;
             if (c > 1.0) c = 1.0;
@@ -138,9 +141,9 @@ CCD.prototype.iterate = function(
         }
 
         // ? softify at min/max
-        if (rotationMin !== undefined)
+        if (activateConstraints && rotationMin !== undefined)
             link.rotation.setFromVector3(link.rotation.toVector3(vector).max(rotationMin));
-        if (rotationMax !== undefined)
+        if (activateConstraints && rotationMax !== undefined)
             link.rotation.setFromVector3(link.rotation.toVector3(vector).min(rotationMax));
 
         link.updateMatrixWorld(true);
