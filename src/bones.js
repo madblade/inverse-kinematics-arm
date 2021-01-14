@@ -80,6 +80,8 @@ function createExample(scene, state)
     skeletonHelper.material.linewidth = 2;
     scene.add(skeletonHelper);
 
+    // Fabrik helper
+    const fabrikHelper = false;
     let m = new LineBasicMaterial({ vertexColors: true });
     let g = new BufferGeometry().setFromPoints(skeleton.chainProxy);
     let colors = [];
@@ -91,8 +93,11 @@ function createExample(scene, state)
     }
     g.setAttribute('color', new Float32BufferAttribute(colors, 3));
     let l = new Line(g, m);
-    scene.add(l);
     constraints.line = l;
+    if (fabrikHelper)
+    {
+        scene.add(l);
+    }
 
     // Constraints helper
     createConstraintsHelper(mesh, constraints, scene);

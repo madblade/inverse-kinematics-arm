@@ -81,6 +81,7 @@ function init()
     effect = new OutlineEffect(renderer);
 
     window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('resize', onWindowResize, false);
 
     // TODO iterate on scenes, store element
     //  ok?
@@ -114,7 +115,6 @@ function init()
         let controls = new OrbitControls(camera, view); // renderer.domElement);
         controls.enablePan = false;
         scene.userData.controls = controls;
-        // window.addEventListener('resize', onWindowResize, false);
 
         let ambient = new AmbientLight(0x666666);
         scene.add(ambient);
@@ -175,12 +175,14 @@ function init()
     states[2].method = METHODS.FABRIK;
 }
 
-// function onWindowResize()
-// {
-//     camera.aspect = window.innerWidth / window.innerHeight;
-//     camera.updateProjectionMatrix();
-//     effect.setSize(window.innerWidth, window.innerHeight);
-// }
+function onWindowResize()
+{
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    // camera.aspect = window.innerWidth / window.innerHeight;
+    // camera.updateProjectionMatrix();
+    // effect.setSize(window.innerWidth, window.innerHeight);
+}
 
 function animate()
 {
@@ -196,7 +198,7 @@ function render()
 
     // canvas.style.transform = `translateY(${window.scrollY}px)`;
 
-    renderer.setClearColor( 0xffffff );
+    renderer.setClearColor( 0x000000 );
     renderer.setScissorTest( false );
     renderer.clear();
 
@@ -244,12 +246,14 @@ function render()
 
 function updateSize()
 {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
     const width = canvas.clientWidth;
     const height = canvas.clientHeight;
     if (canvas.width !== width || canvas.height !== height)
     {
         renderer.setSize(width, height, false);
-        effect.setSize(width, height);
+        effect.setSize(width, height, false);
     }
 }
 
