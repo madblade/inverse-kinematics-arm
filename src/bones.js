@@ -98,7 +98,7 @@ function createExample(scene, state)
     createConstraintsHelper(mesh, constraints, scene);
 
     // GUI
-    createGUI(state, mesh);
+    // createGUI(state, mesh);
 
     return skeleton;
 }
@@ -195,10 +195,10 @@ function createGUI(state, mesh)
     let gui = new GUI();
     let folder = gui.addFolder("General Options");
     let folderIndex = 0;
-    folder.add(state, "animateBones");
-    folder.__controllers[folderIndex++].name("Animate Bones");
-    folder.add(state, "inverseBones");
-    folder.__controllers[folderIndex++].name("Inverse Bones");
+    // folder.add(state, "animateBones");
+    // folder.__controllers[folderIndex++].name("Animate Bones");
+    // folder.add(state, "inverseBones");
+    // folder.__controllers[folderIndex++].name("Inverse Bones");
     let skeleton = mesh.skeleton;
     let skeletonBones = skeleton ? skeleton.bones : [];
     for (let i = 0; i < skeletonBones.length; i++)

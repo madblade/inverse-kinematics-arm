@@ -43,6 +43,14 @@ let numberOfDemos = 3;
 // let solver;
 // let targetPoint;
 
+const METHODS = {
+    NONE: 0,
+    FORWARD: 1,
+    CCD: 2,
+    FABRIK: 3,
+    HYBRID: 4
+};
+
 let cameras = [];
 let scenes = [];
 let raycastPlanes = [];
@@ -80,8 +88,12 @@ function init()
     {
         // Scene, Camera, Controls, Lights, …
         let state = {
-            animateBones: false,
-            inverseBones: true
+            // animateBones: false,
+            // inverseBones: true,
+            method: METHODS.CCD, // none, forward, ccd, fabrik, hybrid
+            iterations_ccd: 10, // ignored if !ccd
+            iterations_fabrik: 10, // ignored if !fabrik
+            iterations_hybrid: [2, 10], // fabrik, then ccd. ignored if !hybrid
         };
 
         const element = document.createElement('div');
@@ -90,8 +102,8 @@ function init()
 
         let scene = new Scene();
         scene.background = new Color(0x000000);
-        scene.userData.element = element;
-        view.appendChild(element);
+        // scene.userData.element = element;
+        // view.appendChild(element);
 
         // let elementWidth = window.innerWidth;
         // let elementHeight = window.innerHeight;
@@ -99,7 +111,7 @@ function init()
         let camera = new PerspectiveCamera(45, cameraAspect, 1, 2000);
         camera.position.z = 30;
 
-        let controls = new OrbitControls(camera, scene.userData.element); // renderer.domElement);
+        let controls = new OrbitControls(camera, view); // renderer.domElement);
         controls.enablePan = false;
         scene.userData.controls = controls;
         // window.addEventListener('resize', onWindowResize, false);
@@ -144,7 +156,8 @@ function init()
         let targetPoint = new Vector3(0, 10, 0);
 
         // Put into model
-        elements.push(element);
+        // elements.push(element);
+        elements.push(view);
         cameras.push(camera);
         scenes.push(scene);
         raycastPlanes.push(raycastPlane);
@@ -155,6 +168,11 @@ function init()
         solvers.push(solver);
         targetPoints.push(targetPoint);
     }
+
+    // Customize here
+    states[0].method = METHODS.FORWARD;
+    states[1].method = METHODS.CCD;
+    states[2].method = METHODS.FABRIK;
 }
 
 // function onWindowResize()
@@ -166,8 +184,8 @@ function init()
 
 function animate()
 {
-    requestAnimationFrame(animate);
     render();
+    requestAnimationFrame(animate);
 }
 
 // UPDATE
@@ -176,13 +194,13 @@ function render()
 {
     updateSize();
 
-    canvas.style.transform = `translateY(${window.scrollY}px)`;
+    // canvas.style.transform = `translateY(${window.scrollY}px)`;
 
     renderer.setClearColor( 0xffffff );
     renderer.setScissorTest( false );
     renderer.clear();
 
-    renderer.setClearColor( 0xe0e0e0 );
+    renderer.setClearColor( 0x000000 );
     renderer.setScissorTest( true );
 
     // TODO render for all scenes, adaptive viewport
@@ -200,7 +218,7 @@ function render()
         const rect = element.getBoundingClientRect();
         if (rect.bottom < 0 || rect.top > renderer.domElement.clientHeight ||
             rect.right < 0 || rect.left > renderer.domElement.clientWidth)
-            return;
+            continue;
         const width = rect.right - rect.left;
         const height = rect.bottom - rect.top;
         const left = rect.left;
@@ -210,13 +228,14 @@ function render()
         renderer.setScissor(left, bottom, width, height);
 
         // Wiggle bones forward
-        if (state.animateBones)
+        if (state.method === METHODS.FORWARD)
             updateBonesForward(skeleton);
 
         // Follow cursor
-        else if (state.inverseBones)
-            updateBonesInverse(skeleton, solver, targetPoint);
+        else if (state.method !== METHODS.NONE)
+            updateBonesInverse(skeleton, solver, targetPoint, state);
 
+        // renderer.render(scene, camera);
         effect.render(scene, camera);
     }
 
@@ -266,18 +285,21 @@ function onMouseMove(event)
         const camera = cameras[i];
         const targetPoint = targetPoints[i];
         const mouseHelper = mouseHelpers[i];
+        if (!mouseHelper) continue;
         const raycastPlane = raycastPlanes[i];
+        const relativeMouse = relativeMice[i];
 
         const element = elements[i];
         const rect = element.getBoundingClientRect();
         if (rect.bottom < 0 || rect.top > renderer.domElement.clientHeight ||
             rect.right < 0 || rect.left > renderer.domElement.clientWidth)
-            return;
-        if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom)
-            return;
+            continue;
+        if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom ||
+            rect.bottom === rect.top || rect.left === rect.right)
+            continue;
 
-        const relX = (x - rect.left) / (rect.right - rect.left);
-        const relY = (y - rect.top) / (rect.bottom - rect.top);
+        const relX = (x - rect.left) / (rect.right - rect.left) * 2 - 1;
+        const relY = (rect.top -y) / (rect.bottom - rect.top) * 2 + 1;
 
         // const width = rect.right - rect.left;
         // const height = rect.bottom - rect.top;
@@ -286,13 +308,13 @@ function onMouseMove(event)
 
         // renderer.setViewport(left, bottom, width, height);
         // renderer.setScissor(left, bottom, width, height);
-        mouseHelper.set(relX, relY);
+        relativeMouse.set(relX, relY);
 
         // Raycasting
         let raycaster = new Raycaster();
-        raycaster.setFromCamera(mouse, camera);
+        raycaster.setFromCamera(relativeMouse, camera);
         let intersects = raycaster.intersectObjects([raycastPlane]);
-        if (!intersects.length || !intersects[0]) return;
+        if (!intersects.length || !intersects[0]) continue;
 
         targetPoint.copy(intersects[0].point);
         mouseHelper.position.copy(targetPoint);
@@ -301,7 +323,7 @@ function onMouseMove(event)
     mouseHasMoved = true;
 }
 
-function updateBonesInverse(skl, slv, targetPoint)
+function updateBonesInverse(skl, slv, targetPoint, state)
 {
     // IK
     let chain = skl.bones;
@@ -309,10 +331,31 @@ function updateBonesInverse(skl, slv, targetPoint)
 
     if (mouseHasMoved)
     {
-        slv.solve(Solver.FABRIK, chain, targetPoint, 2, constraints, false);
-        slv.solve(Solver.CCD, chain, targetPoint, 10, constraints, true);
+        switch (state.method)
+        {
+            case METHODS.HYBRID:
+                const i1 = state.iterations_hybrid[0];
+                const i2 = state.iterations_hybrid[1];
+                slv.solve(Solver.FABRIK, chain, targetPoint, i1, constraints, false);
+                slv.solve(Solver.CCD, chain, targetPoint, i2, constraints, true);
+                break;
+            case METHODS.CCD:
+                const iterations_ccd = state.iterations_ccd;
+                slv.solve(Solver.CCD, chain, targetPoint, iterations_ccd, constraints, true);
+                break;
+            case METHODS.FABRIK:
+                const iterations_fabrik = state.iterations_fabrik;
+                slv.solve(Solver.FABRIK, chain, targetPoint, iterations_fabrik, constraints, true);
+                break;
+        }
     }
 }
+
+// let html = `
+// `;
+// let div = document.createElement('div');
+// div.innerHTML = html.trim();
+// document.body.appendChild(div);
 
 // Entry
 init();
