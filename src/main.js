@@ -19,53 +19,71 @@ import {
 } from 'three';
 import { OrbitControls }    from 'three/examples/jsm/controls/OrbitControls';
 import { OutlineEffect }    from 'three/examples/jsm/effects/OutlineEffect';
-import Stats                from 'three/examples/jsm/libs/stats.module';
 import { IKSolver, Solver }        from './solvers/IKSolver';
 import { createExample } from './bones';
 
-let container, stats;
-let camera, scene, renderer, effect;
+let renderer;
+let effect;
+let time = 0;
+let canvas;
+let mouseHasMoved = false;
+let mouse = new Vector2();
+let mouseRelative = new Vector2();
+// let container;
+
+let camera;
+let scene;
 let raycastPlane;
 let mouseHelper;
 let state = {
     animateBones: false,
     inverseBones: true
 };
-let mouse = new Vector2();
-let hinge = {
-    direction: new Vector3(1., 1., 1.),
-    origin: new Vector3(0., 0., 0.),
-};
-
 let skeleton;
+let solver;
+let targetPoint = new Vector3(0, 10, 0);
+
+let cameras = [];
+let scenes = [];
+let raycastPlanes = [];
+let mouseHelpers = [];
+let states = [];
+let mice = [];
+let skeletons = [];
+let solvers = [];
+let targetPoints = [];
 
 function init()
 {
     // HTML
-    container = document.createElement('div');
-    document.body.appendChild(container);
+    canvas = document.getElementById('c');
+    // container = document.createElement('div');
+    // document.body.appendChild(container);
 
     // Renderer
     renderer = new WebGLRenderer({
+        canvas: canvas,
         antialias: true,
     });
     renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    container.appendChild(renderer.domElement);
+    renderer.setClearColor(0x000000, 1);
+    // renderer.setSize(window.innerWidth, window.innerHeight);
+    // container.appendChild(renderer.domElement);
     effect = new OutlineEffect(renderer);
 
-    // Stats
-    stats = new Stats();
-    container.appendChild(stats.dom);
+    // TODO iterate on scenes, store element
 
     // Scene, Camera, Controls, Lights
+    let elementWidth = window.innerWidth;
+    let elementHeight = window.innerHeight;
+
     scene = new Scene();
     scene.background = new Color(0x000000);
-    camera = new PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 2000);
+    camera = new PerspectiveCamera(45, elementWidth / elementHeight, 1, 2000);
     camera.position.z = 30;
     let controls = new OrbitControls(camera, renderer.domElement);
     controls.enablePan = false;
-    window.addEventListener('resize', onWindowResize, false);
+    // window.addEventListener('resize', onWindowResize, false);
     window.addEventListener('mousemove', onMouseMove);
 
     let ambient = new AmbientLight(0x666666);
@@ -75,7 +93,6 @@ function init()
     scene.add(directionalLight);
 
     // Helpers
-    // var gridHelper = new PolarGridHelper(30, 10);
     let gridHelper = new GridHelper(30, 10);
     gridHelper.position.y = -10;
     scene.add(gridHelper);
@@ -85,8 +102,10 @@ function init()
     axesHelper.position.z = 10;
     scene.add(axesHelper);
 
-    let planeGeometry = new PlaneBufferGeometry(100, 100, 2);
-    let planeMaterial = new MeshBasicMaterial({color: 0xffff00, side: DoubleSide, wireframe: true});
+    let planeGeometry = new PlaneBufferGeometry(30, 30, 2);
+    let planeMaterial = new MeshBasicMaterial({
+        color: 0xffff00, side: DoubleSide, wireframe: true
+    });
     raycastPlane = new Mesh(planeGeometry, planeMaterial);
     // raycastPlane.rotation.x = Math.PI / 2;
     raycastPlane.rotation.x = Math.PI / 2;
@@ -94,69 +113,78 @@ function init()
 
     // Mouse helper
     let mouseGeometry = new BoxBufferGeometry(1, 1, 1);
-    let mouseMaterial = new MeshBasicMaterial({color: 0xff6e2d, opacity: 0.5});
+    let mouseMaterial = new MeshBasicMaterial({ color: 0xff6e2d, opacity: 0.5 });
     mouseHelper = new Mesh(mouseGeometry, mouseMaterial);
     scene.add(mouseHelper);
 
-    // let arrow = new ArrowHelper(hinge.direction, hinge.origin, 5);
-    // hinge.helper = arrow;
-    // scene.add(arrow);
-
-    // X
-    // SKINNED MESH EXAMPLE
-    // X
+    // Skinned mesh
     skeleton = createExample(scene, state);
+
+    // Solver
+    solver = new IKSolver();
+    targetPoint = new Vector3(0, 10, 0);
 }
 
-function onWindowResize()
-{
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    effect.setSize(window.innerWidth, window.innerHeight);
-}
+// function onWindowResize()
+// {
+//     camera.aspect = window.innerWidth / window.innerHeight;
+//     camera.updateProjectionMatrix();
+//     effect.setSize(window.innerWidth, window.innerHeight);
+// }
 
 function animate()
 {
     requestAnimationFrame(animate);
-    stats.begin();
     render();
-    stats.end();
 }
 
 // UPDATE
 
 function render()
 {
+    updateSize();
+
+    //TODO render for all scenes, adaptive viewport
+
     // Wiggle bones forward
     if (state.animateBones)
-        updateBonesForward();
+        updateBonesForward(skeleton);
 
     // Follow cursor
     else if (state.inverseBones)
-        updateBonesInverse();
+        updateBonesInverse(skeleton);
 
     effect.render(scene, camera);
+}
+
+function updateSize()
+{
+    const width = canvas.clientWidth;
+    const height = canvas.clientHeight;
+    if (canvas.width !== width || canvas.height !== height)
+    {
+        renderer.setSize(width, height, false);
+        effect.setSize(width, height);
+    }
 }
 
 // FORWARD KINEMATICS
 
 // Dummy update function
-let time = 0;
-function updateBonesForward()
+function updateBonesForward(skl)
 {
     time += 0.01;
-    for (let i = 0; i < skeleton.bones.length; i++) {
-        skeleton.bones[i].rotation.z =
-            Math.sin(time + i) * 2 / skeleton.bones.length;
+    for (let i = 0; i < skl.bones.length; i++) {
+        skl.bones[i].rotation.z =
+            Math.sin(time + i) * 2 / skl.bones.length;
     }
 }
 
-// INVERSE KINEMATICS
+// Inverse kinematics
 
-let targetPoint = new Vector3(0, 10, 0);
-let mouseHasMoved = false;
 function onMouseMove(event)
 {
+    // TODO get viewport for all scenes and adapt.
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
@@ -171,24 +199,21 @@ function onMouseMove(event)
     mouseHasMoved = true;
 }
 
-let solver = new IKSolver();
-function updateBonesInverse()
+function updateBonesInverse(skl, slv)
 {
     // IK
-    let chain = skeleton.bones;
-    let constraints = skeleton.constraints;
-    constraints.hinge = hinge;
+    let chain = skl.bones;
+    let constraints = skl.constraints;
 
     if (mouseHasMoved)
     {
-        solver.solve(Solver.FABRIK, chain, targetPoint, 2, constraints, false);
-        solver.solve(Solver.CCD, chain, targetPoint, 10, constraints, true);
+        slv.solve(Solver.FABRIK, chain, targetPoint, 2, constraints, false);
+        slv.solve(Solver.CCD, chain, targetPoint, 10, constraints, true);
     }
 
     mouseHasMoved = false;
 }
 
 // Entry
-
 init();
 animate();
