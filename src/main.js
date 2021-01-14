@@ -1,7 +1,7 @@
 import './style.css';
 
 import {
-    AmbientLight, ArrowHelper,
+    AmbientLight,
     AxesHelper,
     BoxBufferGeometry,
     Color,
@@ -21,7 +21,7 @@ import { OrbitControls }    from 'three/examples/jsm/controls/OrbitControls';
 import { OutlineEffect }    from 'three/examples/jsm/effects/OutlineEffect';
 import Stats                from 'three/examples/jsm/libs/stats.module';
 import { IKSolver, Solver }        from './solvers/IKSolver';
-import { createExample, skeleton } from './bones';
+import { createExample } from './bones';
 
 let container, stats;
 let camera, scene, renderer, effect;
@@ -36,6 +36,8 @@ let hinge = {
     direction: new Vector3(1., 1., 1.),
     origin: new Vector3(0., 0., 0.),
 };
+
+let skeleton;
 
 function init()
 {
@@ -103,7 +105,7 @@ function init()
     // X
     // SKINNED MESH EXAMPLE
     // X
-    createExample(scene, state);
+    skeleton = createExample(scene, state);
 }
 
 function onWindowResize()

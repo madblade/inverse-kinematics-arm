@@ -1,21 +1,17 @@
 import {
-    ArrowHelper,
     Bone, BufferGeometry, Color,
     CylinderBufferGeometry, DoubleSide,
-    Float32BufferAttribute, Geometry, Line, LineBasicMaterial,
-    MeshPhongMaterial, Object3D, PlaneHelper, Quaternion, Skeleton, SkeletonHelper, SkinnedMesh,
+    Float32BufferAttribute, Line, LineBasicMaterial,
+    MeshPhongMaterial, Skeleton, SkeletonHelper, SkinnedMesh,
     Uint16BufferAttribute,
     Vector3
 } from 'three';
 import { GUI }                 from 'three/examples/jsm/libs/dat.gui.module';
 import { IKConstraintsHelper } from './helpers/IKConstraintsHelper';
 
-let gui;
-let skeleton;
-let boneLength = 5;
-
 function createExample(scene, state)
 {
+    let boneLength = 5;
     let segmentHeight = boneLength;
     let segmentCount = 4;
     let height = segmentHeight * segmentCount;
@@ -77,7 +73,7 @@ function createExample(scene, state)
     scene.add(mesh);
 
     // Bones
-    createBones(sizing, constraints, mesh);
+    let skeleton = createBones(sizing, constraints, mesh);
 
     // Skeleton helper
     let skeletonHelper = new SkeletonHelper(mesh);
@@ -103,6 +99,8 @@ function createExample(scene, state)
 
     // GUI
     createGUI(state, mesh);
+
+    return skeleton;
 }
 
 function createBones(sizing, constraints, mesh)
@@ -130,19 +128,19 @@ function createBones(sizing, constraints, mesh)
         boneLengths.push(5);
     }
     boneLengths.push(0);
-    // bonePositions.push(new Vector3(0, 0, 0));
     constraints.boneLengths = boneLengths;
     constraints.chainProxy = chainProxy;
     constraints.fixedBaseLocation = fixedBaseLocation;
-    // constraints.bonePositions = bonePositions;
 
-    skeleton = new Skeleton(bones);
+    let skeleton = new Skeleton(bones);
     skeleton.constraints = constraints;
     skeleton.chainProxy = chainProxy;
 
     let rootBone = skeleton.bones[0];
     mesh.add(rootBone);
     mesh.bind(skeleton);
+
+    return skeleton;
 }
 
 function createSkinnedMesh(sizing)
@@ -194,16 +192,13 @@ function createConstraintsHelper(
 
 function createGUI(state, mesh)
 {
-    // dat.gui helper
-    gui = new GUI();
+    let gui = new GUI();
     let folder = gui.addFolder("General Options");
     let folderIndex = 0;
     folder.add(state, "animateBones");
     folder.__controllers[folderIndex++].name("Animate Bones");
     folder.add(state, "inverseBones");
     folder.__controllers[folderIndex++].name("Inverse Bones");
-    folder.add(mesh, "pose");
-    folder.__controllers[folderIndex++].name(".pose()");
     let skeleton = mesh.skeleton;
     let skeletonBones = skeleton ? skeleton.bones : [];
     for (let i = 0; i < skeletonBones.length; i++)
@@ -212,27 +207,13 @@ function createGUI(state, mesh)
         folderIndex = 0;
         folder = gui.addFolder("Bone " + i);
 
-        // folder.add(bone.position, 'x', -10 + bone.position.x, 10 + bone.position.x);
-        // folder.add(bone.position, 'y', -10 + bone.position.y, 10 + bone.position.y);
-        // folder.add(bone.position, 'z', -10 + bone.position.z, 10 + bone.position.z);
-        // folder.__controllers[folderIndex++].name("position.x");
-        // folder.__controllers[folderIndex++].name("position.y");
-        // folder.__controllers[folderIndex++].name("position.z");
-
         folder.add(bone.rotation, 'x', -Math.PI * 0.5, Math.PI * 0.5, 0.001);
         folder.add(bone.rotation, 'y', -Math.PI * 0.5, Math.PI * 0.5, 0.001);
         folder.add(bone.rotation, 'z', -Math.PI * 0.5, Math.PI * 0.5, 0.001);
         folder.__controllers[folderIndex++].name("rotation.x");
         folder.__controllers[folderIndex++].name("rotation.y");
         folder.__controllers[folderIndex++].name("rotation.z");
-
-        // folder.add(bone.scale, 'x', 0, 2);
-        // folder.add(bone.scale, 'y', 0, 2);
-        // folder.add(bone.scale, 'z', 0, 2);
-        // folder.__controllers[folderIndex++].name("weight.x");
-        // folder.__controllers[folderIndex++].name("weight.y");
-        // folder.__controllers[folderIndex++].name("weight.z");
     }
 }
 
-export { createExample, skeleton }
+export { createExample }

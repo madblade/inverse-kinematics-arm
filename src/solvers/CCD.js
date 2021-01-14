@@ -1,7 +1,12 @@
 
-// ref https://github.com/mrdoob/three.js/blob/master/examples/jsm/animation/CCDIKSolver.js
-// http://number-none.com/product/IK%20with%20Quaternion%20Joint%20Limits/index.html
-// https://iquilezles.org/www/articles/noacos/noacos.htm
+/**
+ * @author madblade
+ * @author takahiro (Takahiro Aoyagi / Fujitsu)
+ * adapted from https://github.com/mrdoob/three.js/blob/master/examples/jsm/animation/CCDIKSolver.js
+ * and https://sites.google.com/site/auraliusproject/ccd-algorithm
+ * MIT license.
+ */
+
 
 import {
     Quaternion, Vector3
@@ -101,7 +106,6 @@ CCD.prototype.iterate = function(
         effectorPos.setFromMatrixPosition(effector.matrixWorld);
 
         // Check distance from target
-        // TODO compute flops
         let distance = effectorPos.distanceTo(targetPoint);
         if (distance < SMALL_DISTANCE) break;
 
@@ -132,8 +136,8 @@ CCD.prototype.iterate = function(
         // ? think about this slerp function.
         // link.quaternion.slerp(qq, 0.05);
 
-        if (activateConstraints && limitation !== undefined) {
-            // TODO reconsider limitation specification
+        if (activateConstraints && limitation !== undefined)
+        {
             let c = link.quaternion.w;
             if (c > 1.0) c = 1.0;
             let c2 = math.sqrt(1 - c * c);

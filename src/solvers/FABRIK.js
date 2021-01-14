@@ -1,17 +1,13 @@
 
-// from https://github.com/jsantell/THREE.IK/blob/master/src/IKChain.js
-// https://github.com/jsantell/THREE.IK/blob/master/src/IK.js
-// https://github.com/jsantell/THREE.IK/issues/2
-// https://github.com/jsantell/THREE.IK/issues/3
-// https://github.com/jsantell/THREE.IK/issues/4
-// http://number-none.com/product/IK%20with%20Quaternion%20Joint%20Limits/index.html
-//
-
-// from https://github.com/FedUni/caliko/
+/**
+ * @author madblade
+ * @author alansley (Alastair Lansley / Federation University Australia)
+ * adapted from https://github.com/FedUni/caliko/
+ * MIT license.
+ */
 
 import {
-    Matrix3,
-    Matrix4, Object3D,
+    Matrix4,
     Quaternion, Vector3
 } from 'three';
 
@@ -37,13 +33,14 @@ function FABRIK()
     this.m2 = new Matrix4();
 
     this.mFixedBaseLocation = new Vector3();
+
+    this.mSolveDistanceThreshold = 0.001; // 1.0;
+    this.mMinIterationChange = 0.; //0001;
+    this.mFixedBaseMode = true;
+
+    this.ops = 0;
 }
 
-const mSolveDistanceThreshold = 0.001; // 1.0;
-const mMinIterationChange = 0.0001;
-const mFixedBaseMode = true;
-
-// TODO compute flops
 FABRIK.prototype.solve = function(
     chain,
     targetPoint,
@@ -57,6 +54,7 @@ FABRIK.prototype.solve = function(
     let currentSolveDistance = Number.MAX_VALUE;
 
     this.mFixedBaseLocation = constraints.fixedBaseLocation;
+    this.ops = 0;
 
     let matrixWorldInverse = this.m1;
     let root = chain[0].parent;
@@ -72,7 +70,6 @@ FABRIK.prototype.solve = function(
     if (copyFromChain)
     {
         const proxies = constraints.chainProxy;
-        const boneLengths = constraints.boneLengths;
         for (let  i = 0; i < proxies.length; ++i)
         {
             let link = chain[i];
@@ -116,10 +113,11 @@ FABRIK.prototype.solve = function(
         if (solveDistance < bestSolveDistance)
         {
             bestSolveDistance = solveDistance;
+            // Note: we should save only the best solution here.
             // bestSolution = this.cloneIkChain();
 
             // If we are happy that this solution meets our distance requirements then we can exit the loop now
-            if (solveDistance <= mSolveDistanceThreshold)
+            if (solveDistance <= this.mSolveDistanceThreshold)
             {
                 break;
             }
@@ -127,10 +125,10 @@ FABRIK.prototype.solve = function(
         else // Did not solve to our satisfaction? Okay...
         {
             // Did we grind to a halt? If so break out of loop to set the best distance and solution that we have
-            if ( Math.abs(solveDistance - lastPassSolveDistance) < mMinIterationChange )
+            if ( Math.abs(solveDistance - lastPassSolveDistance) < this.mMinIterationChange )
             {
                 // console.log('Ground to halt on iteration: ' + loop);
-                // break;
+                break;
             }
         }
 
@@ -600,7 +598,7 @@ FABRIK.prototype.backward = function(
             nextBonePosition.copy(thisEnd);
 
             // If the base location is fixed then snap the start location of the basebone back to the fixed base...
-            if (mFixedBaseMode)
+            if (this.mFixedBaseMode)
             {
                 thisBone.copy(this.mFixedBaseLocation);
             }
