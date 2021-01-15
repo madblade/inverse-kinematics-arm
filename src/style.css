@@ -21,10 +21,21 @@ a {
     left: 0px;
 }
 
-.view {
+.view, .view-double {
     width: 5in;
     height: 5in;
     margin: auto;
+}
+
+.view-double {
+    display: block;
+}
+
+.view-left, .view-right {
+    display: inline-block;
+    margin: auto;
+    width: 2.3in;
+    height: 2.5in;
 }
 
 #c {

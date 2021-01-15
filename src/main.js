@@ -2,7 +2,6 @@ import './style.css';
 
 import {
     AmbientLight,
-    AxesHelper,
     BoxBufferGeometry,
     Color,
     DirectionalLight,
@@ -28,20 +27,7 @@ let time = 0;
 let canvas;
 let mouseHasMoved = false;
 let mouse = new Vector2();
-let numberOfDemos = 3;
-// let container;
-
-// let camera;
-// let scene;
-// let raycastPlane;
-// let mouseHelper;
-// let state = {
-//     animateBones: false,
-//     inverseBones: true
-// };
-// let skeleton;
-// let solver;
-// let targetPoint;
+let numberOfDemos = 5;
 
 const METHODS = {
     NONE: 0,
@@ -62,12 +48,181 @@ let solvers = [];
 let targetPoints = [];
 let elements = [];
 
+function customizeDemo(states)
+{
+    // Robotic arm presentation
+    states[0].method = METHODS.FORWARD;
+
+    // CCD, unconstrained
+    states[1].method = METHODS.CCD;
+
+    // FABRIK, unconstrained
+    states[2].method = METHODS.FABRIK;
+    // states[2].constrained = true;
+}
+
+function createOneConstraintMiddle(state)
+{
+    let constraints = {
+        effector: 4,
+        links: [
+            { id: 0 },
+            { id: 1 },
+            { id: 2, limitation: new Vector3( 0, 0, 1 ) },
+            { id: 3 },
+        ],
+        minAngle: 0.,
+        maxAngle: 1.0
+    };
+    state.constraints = constraints;
+}
+
+function createOneConstraintEnd(state)
+{
+    let constraints = {
+        effector: 4,
+        links: [
+            { id: 0 },
+            { id: 1 },
+            { id: 2 },
+            { id: 3, limitation: (new Vector3( 1, 0, 0 )) },
+        ],
+        minAngle: 0.,
+        maxAngle: 1.0
+    };
+    state.constraints = constraints;
+}
+
+function createTwoConstraints(state)
+{
+
+    let constraints = {
+        effector: 4,
+        links: [
+            { id: 0 },
+            { id: 1 },
+            { id: 2, limitation: new Vector3( 0, 0, 1 ) },
+            { id: 3, limitation: (new Vector3( 1, 0, 0 )) },
+        ],
+        minAngle: 0.,
+        maxAngle: 1.0
+    };
+    state.constraints = constraints;
+}
+
+function createTwoConstraintsPlusLimitEnd(state)
+{
+    let constraints = {
+        effector: 4,
+        links: [
+            { id: 0 },
+            { id: 1 },
+            { id: 2, limitation: new Vector3( 0, 0, 1 ) },
+            { id: 3, limitation: (new Vector3( 1, 0, 0 )) },
+            { id: 3,
+                limitation: new Vector3( 1, 0, 0 ),
+                rotationMin: new Vector3(-Math.PI / 2, -Math.PI / 2, -Math.PI / 2),
+                rotationMax: new Vector3(Math.PI / 2, Math.PI / 2, Math.PI / 2)
+            },
+        ],
+        minAngle: 0.,
+        maxAngle: 1.0
+    };
+    state.constraints = constraints;
+}
+
+function createTwoConstraintsPlusLimitMiddle(state)
+{
+
+    let constraints = {
+        effector: 4,
+        links: [
+            { id: 0 },
+            { id: 1,
+                rotationMin: new Vector3(-Math.PI / 2, -Math.PI / 2, -Math.PI / 2),
+                rotationMax: new Vector3(Math.PI / 2, Math.PI / 2, Math.PI / 2)
+            },
+            { id: 2, limitation: new Vector3( 0, 0, 1 ) },
+            { id: 3, limitation: (new Vector3( 1, 0, 0 )) },
+        ],
+        minAngle: 0.,
+        maxAngle: 1.0
+    };
+    state.constraints = constraints;
+}
+
+function createDefaultConstraints(state)
+{
+    // constraints format
+    // links — An array of [Bones (Object3D)] specifying link bones.
+    //  index — Link bone.
+    //  limitation — (optional) NORMALIZED rotation axis. Default is undefined.
+    //  rotationMin — (optional) Rotation minimum limit. Default is undefined.
+    //  rotationMax — (optional) Rotation maximum limit. Default is undefined.
+    //  enabled — (optional) Default is true.
+
+    let constraints = {
+        effector: 4,
+        links: [
+            { id: 0 },
+            { id: 1 },
+            { id: 2 },
+            { id: 3 },
+        ],
+        minAngle: 0.,
+        maxAngle: 1.0
+    };
+    state.constraints = constraints;
+}
+
+function createDefaultSizing(state)
+{
+    let boneLength = 5;
+    let segmentHeight = boneLength;
+    let segmentCount = 4;
+    let height = segmentHeight * segmentCount;
+    let halfHeight = height * 0.5;
+    let sizing = {
+        segmentHeight,
+        segmentCount,
+        height,
+        halfHeight
+    };
+    state.sizing = sizing;
+}
+
+function createLongConstraint(state)
+{
+    let links = new Array(20).fill(0).map((x, i)=>{return {id: i}});
+    let constraints = {
+        effector: 4,
+        links: links,
+        minAngle: 0.,
+        maxAngle: 1.0
+    };
+    state.constraints = constraints;
+}
+
+function createLongSizing(state)
+{
+    let boneLength = 1;
+    let segmentHeight = boneLength;
+    let segmentCount = 20;
+    let height = segmentHeight * segmentCount;
+    let halfHeight = height * 0.5;
+    let sizing = {
+        segmentHeight,
+        segmentCount,
+        height,
+        halfHeight
+    };
+    state.sizing = sizing;
+}
+
 function init()
 {
     // HTML
     canvas = document.getElementById('c');
-    // container = document.createElement('div');
-    // document.body.appendChild(container);
 
     // Renderer
     renderer = new WebGLRenderer({
@@ -76,43 +231,47 @@ function init()
     });
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setClearColor(0x000000, 1);
-    // renderer.setSize(window.innerWidth, window.innerHeight);
-    // container.appendChild(renderer.domElement);
-    effect = new OutlineEffect(renderer);
+    effect = new OutlineEffect(renderer, {
+        defaultColor: 0xffffff
+    });
 
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('resize', onWindowResize, false);
 
-    // TODO iterate on scenes, store element
-    //  ok?
     for (let i = 0; i < numberOfDemos; ++i)
     {
-        // Scene, Camera, Controls, Lights, …
         let state = {
-            // animateBones: false,
-            // inverseBones: true,
+            sizing: {},
             method: METHODS.CCD, // none, forward, ccd, fabrik, hybrid
             iterations_ccd: 10, // ignored if !ccd
             iterations_fabrik: 10, // ignored if !fabrik
             iterations_hybrid: [2, 10], // fabrik, then ccd. ignored if !hybrid
+            constrained: false,
+            constraints: {}
         };
+        createDefaultSizing(state);
+        createDefaultConstraints(state);
+        states.push(state);
+    }
 
-        const element = document.createElement('div');
+    customizeDemo(states);
+
+    for (let i = 0; i < numberOfDemos; ++i)
+    {
+        // Scene, Camera, Controls, Lights, …
         const view = document.getElementById('demo-' + i);
         if (!view) continue;
 
         let scene = new Scene();
         scene.background = new Color(0x000000);
-        // scene.userData.element = element;
-        // view.appendChild(element);
 
-        // let elementWidth = window.innerWidth;
-        // let elementHeight = window.innerHeight;
         let cameraAspect = 1; // elementWidth / elementHeight;
         let camera = new PerspectiveCamera(45, cameraAspect, 1, 2000);
-        camera.position.z = 30;
+        // camera.position.z = 30;
+        camera.position.z = 40;
+        camera.position.y = 30;
 
-        let controls = new OrbitControls(camera, view); // renderer.domElement);
+        let controls = new OrbitControls(camera, view);
         controls.enablePan = false;
         scene.userData.controls = controls;
 
@@ -123,23 +282,24 @@ function init()
         scene.add(directionalLight);
 
         // Helpers
-        let gridHelper = new GridHelper(30, 10);
+        let gridHelper = new GridHelper(30, 3, 0x444444, 0x111111);
         gridHelper.position.y = -10;
         scene.add(gridHelper);
-        let axesHelper = new AxesHelper(5);
-        axesHelper.position.y = -10;
-        axesHelper.position.x = 10;
-        axesHelper.position.z = 10;
-        scene.add(axesHelper);
 
         let planeGeometry = new PlaneBufferGeometry(30, 30, 2);
         let planeMaterial = new MeshBasicMaterial({
-            color: 0xffff00, side: DoubleSide, wireframe: true
+            color: 0xffff00,
+            side: DoubleSide,
+            wireframe: true,
+            transparent: true,
+            opacity: 0
         });
         let raycastPlane = new Mesh(planeGeometry, planeMaterial);
-        // raycastPlane.rotation.x = Math.PI / 2;
         raycastPlane.rotation.x = Math.PI / 2;
         scene.add(raycastPlane);
+
+        let gridHelper2 = new GridHelper(30, 2);
+        scene.add(gridHelper2);
 
         // Mouse helper
         let relativeMouse = new Vector2();
@@ -149,6 +309,7 @@ function init()
         scene.add(mouseHelper);
 
         // Skinned mesh
+        let state = states[i];
         let skeleton = createExample(scene, state);
 
         // Solver
@@ -156,7 +317,6 @@ function init()
         let targetPoint = new Vector3(0, 10, 0);
 
         // Put into model
-        // elements.push(element);
         elements.push(view);
         cameras.push(camera);
         scenes.push(scene);
@@ -168,11 +328,6 @@ function init()
         solvers.push(solver);
         targetPoints.push(targetPoint);
     }
-
-    // Customize here
-    states[0].method = METHODS.FORWARD;
-    states[1].method = METHODS.CCD;
-    states[2].method = METHODS.FABRIK;
 }
 
 function onWindowResize()
@@ -196,8 +351,6 @@ function render()
 {
     updateSize();
 
-    // canvas.style.transform = `translateY(${window.scrollY}px)`;
-
     renderer.setClearColor( 0x000000 );
     renderer.setScissorTest( false );
     renderer.clear();
@@ -205,11 +358,10 @@ function render()
     renderer.setClearColor( 0x000000 );
     renderer.setScissorTest( true );
 
-    // TODO render for all scenes, adaptive viewport
-    //  ok?
     for (let i = 0; i < numberOfDemos; ++i)
     {
         const scene = scenes[i];
+        if (!scene) continue;
         const state = states[i];
         const skeleton = skeletons[i];
         const solver = solvers[i];
@@ -266,6 +418,8 @@ function updateBonesForward(skl)
     for (let i = 0; i < skl.bones.length; i++) {
         skl.bones[i].rotation.z =
             Math.sin(time + i) * 2 / skl.bones.length;
+        skl.bones[i].rotation.y =
+            Math.sin(time + i) * 2 / skl.bones.length;
     }
 }
 
@@ -278,15 +432,10 @@ function onMouseMove(event)
     mouse.x = (x / window.innerWidth) * 2 - 1;
     mouse.y = -(y / window.innerHeight) * 2 + 1;
 
-    // TODO get viewport for all scenes and adapt.
-    //  ok?
     for (let i = 0; i < numberOfDemos; ++i)
     {
-        // const scene = scenes[i];
-        // const state = states[i];
-        // const skeleton = skeletons[i];
-        // const solver = solvers[i];
         const camera = cameras[i];
+        if (!camera) continue;
         const targetPoint = targetPoints[i];
         const mouseHelper = mouseHelpers[i];
         if (!mouseHelper) continue;
@@ -305,13 +454,6 @@ function onMouseMove(event)
         const relX = (x - rect.left) / (rect.right - rect.left) * 2 - 1;
         const relY = (rect.top -y) / (rect.bottom - rect.top) * 2 + 1;
 
-        // const width = rect.right - rect.left;
-        // const height = rect.bottom - rect.top;
-        // const left = rect.left;
-        // const bottom = renderer.domElement.clientHeight - rect.bottom;
-
-        // renderer.setViewport(left, bottom, width, height);
-        // renderer.setScissor(left, bottom, width, height);
         relativeMouse.set(relX, relY);
 
         // Raycasting
@@ -322,9 +464,9 @@ function onMouseMove(event)
 
         targetPoint.copy(intersects[0].point);
         mouseHelper.position.copy(targetPoint);
-    }
 
-    mouseHasMoved = true;
+        mouseHasMoved = true;
+    }
 }
 
 function updateBonesInverse(skl, slv, targetPoint, state)
@@ -335,31 +477,26 @@ function updateBonesInverse(skl, slv, targetPoint, state)
 
     if (mouseHasMoved)
     {
+        let isConstrained = state.constrained;
         switch (state.method)
         {
             case METHODS.HYBRID:
                 const i1 = state.iterations_hybrid[0];
                 const i2 = state.iterations_hybrid[1];
                 slv.solve(Solver.FABRIK, chain, targetPoint, i1, constraints, false);
-                slv.solve(Solver.CCD, chain, targetPoint, i2, constraints, true);
+                slv.solve(Solver.CCD, chain, targetPoint, i2, constraints, isConstrained);
                 break;
             case METHODS.CCD:
                 const iterations_ccd = state.iterations_ccd;
-                slv.solve(Solver.CCD, chain, targetPoint, iterations_ccd, constraints, true);
+                slv.solve(Solver.CCD, chain, targetPoint, iterations_ccd, constraints, isConstrained);
                 break;
             case METHODS.FABRIK:
                 const iterations_fabrik = state.iterations_fabrik;
-                slv.solve(Solver.FABRIK, chain, targetPoint, iterations_fabrik, constraints, true);
+                slv.solve(Solver.FABRIK, chain, targetPoint, iterations_fabrik, constraints, isConstrained);
                 break;
         }
     }
 }
-
-// let html = `
-// `;
-// let div = document.createElement('div');
-// div.innerHTML = html.trim();
-// document.body.appendChild(div);
 
 // Entry
 init();
