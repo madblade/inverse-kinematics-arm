@@ -11,32 +11,55 @@
     in order for this arm’s end point to reach a target.
 </p>
 
+<!-- Forward demo -->
 <div class="view" id="demo-0">
 </div>
 <p class="legend">A 4-bones robotic arm that does not know how to reach that orange cube.</p>
 <br/>
 
 <p>
-    While it is easy to compute an analytical solution when the arm
+    While it is easy to compute an analytical solution to the IK problem when the arm
     only contains two bones, it quickly becomes impractical as the number of bones increases.
     There are multiple ways, however, to numerically solve the IK problem with arbitrary many bones.
 </p>
 
 <p>
-    One first method is called Cyclic Coordinate Descent (CCD).
+    One first method is called <b>CCD</b> (Cyclic Coordinate Descent).
 </p>
+
+<!-- CCD demo -->
 <div class="view" id="demo-1">
 </div>
+<p class="legend">Move the cube around with your mouse to see CCD in action.</p>
+<br/>
 
-<div>
-    <br/>
-</div>
+<p>
+    As a matter of fact, and as you can see from the demo, CCD runs pretty fast,
+    gives smooth transitions as the target moves around, and also happens to be easy
+    to implement.
+
+    On the demo, it also gives some twist to the robotic arm:
+    if you repeatedly move the target in circles,
+    the arm will eventually get twisted as a helix.
+</p>
+<p>
+    This is because it works in quaternion space (~i.e. just works with angles),
+    and only looks at the quaternions from the last found solution.
+    This is a local process.
+    A solution to that problem would be to add constraints to the
+    joint angles, as we will see in just a bit.
+</p>
+
 <br/>
 <p>
-    Another method is Forward And Backward Reaching Inverse Kinematics (FABRIK).
+    Another method is FABRIK (Forward And Backward Reaching Inverse Kinematics).
 </p>
 <div class="view list-item" id="demo-2">
 </div>
+</div>
+<p class="legend">The FABRIK algorithm in action.</p>
+<br/>
+
 
 <div class="view-double">
     <div class="view-left" id="demo-3">
@@ -44,3 +67,11 @@
     <div class="view-right" id="demo-4">
     </div>
 </div>
+
+<p>
+    As CCD, FABRIK performs locally: it can hit a local optimum
+    and never get out of it. This is because the IK promlem is non-convex, and
+    ideally heuristic methods such as FABRIK and CCD should
+    annealing, as advised by
+    <a href="http://number-none.com/product/IK%20with%20Quaternion%20Joint%20Limits/">Jonathan Blow</a>.
+</p>
