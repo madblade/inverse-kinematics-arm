@@ -1,7 +1,7 @@
 
 # Inverse Kinematics algorithms in WebGL
 
-![](https://raw.githubusercontent.com/madblade/inverse-kinematics-arm/master/img/capture2.jpg)
+![](https://raw.githubusercontent.com/madblade/inverse-kinematics-arm/master/img/ik.jpg)
 
 [Demo available!](https://madblade.github.io/inverse-kinematics-arm)
 
