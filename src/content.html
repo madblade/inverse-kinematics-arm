@@ -7,8 +7,8 @@
 </div>
 <br/>
 <p>
-    The Inverse Kinematics (IK) problem is the problem of finding a robotic arm’s configuration
-    in order for this arm’s end point to reach a target.
+    The Inverse Kinematics (IK) problem is the problem of finding a
+    robotic arm’s configuration in order for this arm’s end point to reach a target.
 </p>
 
 <!-- Forward demo -->
@@ -20,7 +20,8 @@
 <p>
     While it is easy to compute an analytical solution to the IK problem when the arm
     only contains two bones, it quickly becomes impractical as the number of bones increases.
-    There are multiple ways, however, to find a numerical, approximate solution with arbitrary many bones.
+    There are multiple ways, however, to find a numerical,
+    approximate solution with arbitrary many bones.
 </p>
 
 <p>
@@ -39,7 +40,8 @@
         <br/>
         <code><var>n</var> = cross(<var>v<sub>l</sub></var>, <var>v<sub>t</sub></var>)</code>
         <br/>
-        <code>rotate <var>bone</var> around <var>bone.base</var> along <var>n</var> by <var>&alpha;</var></code>
+        <code>rotate <var>bone</var> around <var>bone.base</var> along
+            <var>n</var> by <var>&alpha;</var></code>
     </div>
     <code>repeat</code>
     <br/>
@@ -50,7 +52,8 @@
 <!-- CCD demo -->
 <div class="view" id="demo-1">
 </div>
-<p class="legend">Move the cube around with the mouse to see CCD in action. <small>[10 iter.]</small></p>
+<p class="legend">Move the cube around with the mouse to
+    see CCD in action. <small>[10 iter.]</small></p>
 <br/>
 
 <p>
@@ -60,7 +63,8 @@
 
     On the demo, it also gives some twist to the robotic arm:
     if you repeatedly move the target in circles,
-    the arm will eventually get twisted as a helix.
+    the arm will eventually get twisted as a helix
+    (although this problem can be easily solved).
 </p>
 <p>
     This is because it works in quaternion space (~i.e. just works with angles),
@@ -69,50 +73,58 @@
     A solution to that problem would be to add constraints to the
     joint angles, as we will see in just a bit.
 </p>
-
-<br/>
 <p>
-    Another simple, well-documented method is <b>FABRIK</b> (Forward And Backward Reaching Inverse Kinematics):
+    Another simple, well-documented method is <b>FABRIK</b>
+    (Forward And Backward Reaching Inverse Kinematics):
 </p>
 <br/>
 <div class="algo">
     <code>// forward pass</code>
     <br/>
-    <code><var>v<sub>l</sub></var> = unit_vector(<var>last.base</var>, <var>target</var>) &times; last.length</code>
+    <code><var>v<sub>l</sub></var> = unit_vector(<var>last.base</var>,
+        <var>target</var>) &times; last.length</code>
     <br/>
     <code>snap <var>last.end</var> to <var>target</var> </code>
     <br/>
-    <code>snap <var>last.base</var> to <var>last.end</var> - <var>v<sub>l</sub></var> </code>
+    <code>snap <var>last.base</var> to <var>last.end</var> -
+        <var>v<sub>l</sub></var> </code>
     <br/>
-    <code>for <var>bone</var>: <var>last - 1</var> &rarr; <var>first</var></code>
+    <code>for <var>bone</var>: <var>last - 1</var> &rarr;
+        <var>first</var></code>
     <br/>
     <div class="indent-1">
         <code><var>next</var> = <var>bone.next</var></code>
         <br/>
-        <code><var>u<sub>b</sub></var> = unit_vector(<var>bone.base</var>, <var>next.base</var>)</code>
+        <code><var>u<sub>b</sub></var> = unit_vector(<var>bone.base</var>,
+            <var>next.base</var>)</code>
         <br/>
         <code>snap <var>bone.end</var> to <var>next.base</var></code>
         <br/>
-        <code>snap <var>bone.base</var> to <var>bone.end</var> - <var>u<sub>b</sub></var> &times; bone.length</code>
+        <code>snap <var>bone.base</var> to <var>bone.end</var> -
+            <var>u<sub>b</sub></var> &times; bone.length</code>
         <br/>
     </div>
     <br/>
     <code>// backward pass</code>
     <br/>
-    <code><var>v<sub>f</sub></var> = vector(<var>first.base</var>, <var>first.end</var>)</code>
+    <code><var>v<sub>f</sub></var> = vector(<var>first.base</var>,
+        <var>first.end</var>)</code>
     <br/>
     <code>snap <var>first.base</var> to the robotic arm root</code>
     <br/>
-    <code>snap <var>first.end</var> to <var>first.base</var> + <var>v<sub>f</sub></var> </code>
+    <code>snap <var>first.end</var> to <var>first.base</var> +
+        <var>v<sub>f</sub></var> </code>
     <br/>
     <code>for <var>bone</var>: <var>first + 1</var> &rarr; <var>last</var></code>
     <br/>
     <div class="indent-1">
         <code><var>next</var> = <var>bone.next</var></code>
         <br/>
-        <code><var>u<sub>b</sub></var> = unit_vector(<var>bone.base</var>, <var>next.base</var>)</code>
+        <code><var>u<sub>b</sub></var> = unit_vector(<var>bone.base</var>,
+            <var>next.base</var>)</code>
         <br/>
-        <code>snap <var>bone.end</var> to <var>bone.base</var> + <var>u<sub>b</sub></var> &times; bone.length</code>
+        <code>snap <var>bone.end</var> to <var>bone.base</var> +
+            <var>u<sub>b</sub></var> &times; bone.length</code>
         <br/>
     </div>
     <code>repeat</code>
@@ -123,7 +135,7 @@
 
 <div class="view list-item" id="demo-2">
 </div>
-<p class="legend">The FABRIK algorithm in action. <small>[10 iter.]</small></p>
+<p class="legend">FABRIK in action. <small>[10 iter.]</small></p>
 <br/>
 
 <p>
@@ -132,11 +144,53 @@
     and more well-behaved; all the while giving smooth results and being as easy to
     implement as CCD.
 </p>
+
 <br/>
+<p class="legend">—</p>
 <br/>
-<br/>
+
 <p>
-    How about constraints?
+    This could be all there is to it, but unfortunately, robotic arms (be it for robots or
+    or 3D animated skeletons)
+    are not ideal sequences of bones that can rotate just about freely.
+    In the human skeleton, for example,
+    some bones can only rotate in a certain manner or up to a certain angle.
+</p>
+
+<p>
+    This is why we need <b>constraints</b>. There are many kinds of constraints,
+    two of the most common ones are max/min angle constraints and <emph>hinges</emph>.
+    A hinge constraint simply limits the joint between two bones to operate on a single plane.
+    This is the case, for example, of the human elbow.
+</p>
+<p>
+    Fortunately, these two constraints are quite easy to include in CCD, using
+    quaternions,
+    with limited effect on its capacity to converge with very little work
+    (compared to approaches using other paradigms such as
+    the Jacobian) and to give plausible results.
+</p>
+
+<div class="view list-item" id="demo-5">
+</div>
+<p class="legend">CCD with a hinge constraint. <small>[10 iter.]</small></p>
+<br/>
+
+<p>
+    FABRIK also allows to apply hinge and angle constraints, using vector projections,
+    although the effect on the
+    convergence is somehow more noticeable.
+</p>
+
+<div class="view list-item" id="demo-6">
+</div>
+<p class="legend">FABRIK with a hinge constraint. <small>[10 iter.]</small></p>
+<br/>
+
+<p>
+    But!
+    When there are more constraints, and especially when the constraints concern bones that
+    are near the end effector, FABRIK fails to find an appropriate solution.
 </p>
 
 <div class="view-double">
@@ -145,16 +199,86 @@
     <div class="view-right" id="demo-4">
     </div>
 </div>
-<p class="legend">CCD (left) and FABRIK (right). <small>[10 iter.]</small></p>
+<p class="legend">CCD <small>(left)</small> and FABRIK <small>(right)</small>
+    with two hinges constraints <br/>
+    and a max angle (&pi;/2) on the last joint. <small>[10 iter.]</small>
+</p>
 <br/>
 
 <p>
-    As CCD, FABRIK performs locally: it can hit a local optimum
-    and never get out of it. This is because the IK promlem is non-convex, and
-    ideally heuristic methods such as FABRIK and CCD should
-    annealing, as advised by
+    One of the key advantages of FABRIK is its fast long-distance convergence, and
+    a capacity to be less local, in some sense, than CCD.
+    CCD, on the other hand, displays somehow of a better
+    short-distance convergence, and most importantly better respects strict constraints.
+</p>
+
+<p>
+    Therefore, an interesting idea would be to combine the advantages of both approaches:
+</p>
+<br/>
+<div class="algo">
+    <code>drop constraints</code>
+    <br/>
+    <code>apply 2 iterations of FABRIK</code>
+    <br/>
+    <code>set constraints back</code>
+    <br/>
+    <code>apply 10 iterations of CCD</code>
+    <br/>
+</div>
+<p class="legend">Algohithm: hybrid IK approach.</p>
+<br/>
+
+<div class="view list-item" id="demo-7">
+</div>
+<p class="legend">Hybrid approach with two hinge constraints
+    <br/>
+    and a max angle (&pi;/2) on the last joint. <small>[2+10 iter.]</small>
+</p>
+<br/>
+
+<p>
+    We can see that the hybrid approach is not perfect, but
+    seems much more well-behaved than both CCD
+    (too local, less smooth, twists) and
+    FABRIK (hard time respecting constraints, vibrations).
+    There are still vibration problems with this approach,
+    especially when working with
+    longer robotic arms!
+</p>
+
+<p>
+    As FABRIK, CCD, performs locally: it can hit a local optimum
+    and never get out of it, which is very noticeable on longer arms.
+    This is because the IK promlem is non-convex, and
+    ideally heuristic methods such as FABRIK and CCD should be used along with
+    some form of
+    annealing (on the starting configurations), as advised by
     <a href="http://number-none.com/product/IK%20with%20Quaternion%20Joint%20Limits/">Jonathan Blow</a>.
 </p>
+
+<p>
+    The annealing would become quite tedious as the skeleton grows in size, because
+    we would need to find an acceptable cover of the space of degrees of freedom
+    (see <a href="https://en.wikipedia.org/wiki/Sobol_sequence">Sobol sampling</a>),
+    and that space gets exponentially large as the number of bones increases!
+</p>
+<p>
+    Furthermore, we should make sure that transitions stay smooth…
+</p>
+
+<div class="view list-item" id="demo-8">
+</div>
+<p class="legend">FABRIK on a 20-bone arm, <br/>
+    starting from a vertical configuration.
+    <small>[10 iter.]</small></p>
+<br/>
+
+<br/>
+<br/>
+
+<p>It seems the journey to solving the IK problem in far from being over yet!</p>
+<p>Thanks for reading!</p>
 
 <br/>
 <br/>

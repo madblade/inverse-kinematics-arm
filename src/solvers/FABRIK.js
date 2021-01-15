@@ -39,6 +39,7 @@ function FABRIK()
     this.mFixedBaseMode = true;
 
     this.ops = 0;
+    this.annealOnce = false;
 }
 
 FABRIK.prototype.solve = function(
@@ -78,7 +79,7 @@ FABRIK.prototype.solve = function(
         }
     }
 
-    const annealOnce = false;
+    const annealOnce = this.annealOnce;
     if (annealOnce)
     {
         const proxies = constraints.chainProxy;
@@ -93,7 +94,7 @@ FABRIK.prototype.solve = function(
                 currentStart.set(0, 0, 0);
                 currentEnd.set(0, length, 0);
             }
-            else
+            else if (currentEnd)
             {
                 currentEnd.set(0, length + currentStart.y, 0);
             }

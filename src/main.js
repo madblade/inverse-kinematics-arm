@@ -50,7 +50,7 @@ let targetPoints = [];
 let targetPointHasMoved = [];
 let elements = [];
 
-let numberOfDemos = 5;
+let numberOfDemos = 9; // 5
 
 function customizeDemo(states)
 {
@@ -65,7 +65,32 @@ function customizeDemo(states)
     // states[2].constrained = true;
 
     states[3].method = METHODS.CCD;
+    states[3].constrained = true;
+    createTwoConstraintsPlusLimitEnd(states[3]);
     states[4].method = METHODS.FABRIK;
+    states[4].constrained = true;
+    createTwoConstraintsPlusLimitEnd(states[4]);
+
+    states[5].method = METHODS.CCD;
+    states[5].constrained = true;
+    createOneConstraintMiddle(states[5]);
+
+    states[6].method = METHODS.CCD;
+    states[6].constrained = true;
+    createOneConstraintMiddle(states[6]);
+
+    states[7].method = METHODS.HYBRID;
+    states[7].constrained = true;
+    createTwoConstraintsPlusLimitEnd(states[7]);
+
+    createLongSizing(states[8]);
+    createLongConstraint(states[8]);
+    // states[8].method = METHODS.CCD;
+    states[8].method = METHODS.FABRIK;
+    // states[8].method = METHODS.HYBRID;
+    // states[8].iterations_hybrid = [5, 30];
+    // states[8].constrained = true;
+    // states[8].iterations_ccd = 20;
 }
 
 function wrapDemo(states)
@@ -73,6 +98,10 @@ function wrapDemo(states)
     let id1 = 3;
     let id2 = 4;
     bindDemos(id1, id2);
+
+    scenes[8].userData.rp.position.y += 2;
+    scenes[8].userData.gh.position.y += 2;
+    solvers[8].fabrikSolver.annealOnce = true;
 }
 
 function bindDemos(id1, id2)
@@ -147,8 +176,10 @@ function createTwoConstraintsPlusLimitEnd(state)
         links: [
             { id: 0 },
             { id: 1 },
-            { id: 2, limitation: new Vector3( 0, 0, 1 ) },
-            { id: 3, limitation: (new Vector3( 1, 0, 0 )) },
+            {
+                id: 2, limitation: new Vector3( 0, 0, 1 ),
+            },
+            // { id: 3, limitation: (new Vector3( 1, 0, 0 )) },
             { id: 3,
                 limitation: new Vector3( 1, 0, 0 ),
                 rotationMin: new Vector3(-Math.PI / 2, -Math.PI / 2, -Math.PI / 2),
@@ -224,8 +255,14 @@ function createDefaultSizing(state)
 function createLongConstraint(state)
 {
     let links = new Array(20).fill(0).map((x, i)=>{return {id: i}});
+
+    // for (let i = 5; i < 10; ++i)
+    //     links[i] = {id: i, limitation: new Vector3(1, 0, 0)};
+    // for (let i = 14; i < 18; ++i)
+    //     links[i] = {id: i, limitation: new Vector3(0, 0, 1)};
+
     let constraints = {
-        effector: 4,
+        effector: 20,
         links: links,
         minAngle: 0.,
         maxAngle: 1.0
@@ -235,7 +272,7 @@ function createLongConstraint(state)
 
 function createLongSizing(state)
 {
-    let boneLength = 1;
+    let boneLength = 1.0;
     let segmentHeight = boneLength;
     let segmentCount = 20;
     let height = segmentHeight * segmentCount;
@@ -329,9 +366,11 @@ function init()
         let raycastPlane = new Mesh(planeGeometry, planeMaterial);
         raycastPlane.rotation.x = Math.PI / 2;
         scene.add(raycastPlane);
+        scene.userData.rp = raycastPlane;
 
         let gridHelper2 = new GridHelper(30, 2);
         scene.add(gridHelper2);
+        scene.userData.gh = gridHelper2;
 
         // Mouse helper
         let relativeMouse = new Vector2();

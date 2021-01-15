@@ -35,7 +35,7 @@ module.exports = function(env) {
                     }
                 },
                 {
-                    test: /\.html$/,
+                    test: /content\.html$/,
                     exclude: /node_modules/,
                     use: {
                         loader: 'raw-loader'

@@ -76,7 +76,7 @@ function createBones(sizing, constraints, mesh)
     let boneLengths = []; // for FABRIK
     for (let i = 0; i < bones.length - 1; ++i)
     {
-        boneLengths.push(5);
+        boneLengths.push(sizing.segmentHeight);
     }
     boneLengths.push(0);
     constraints.boneLengths = boneLengths;
