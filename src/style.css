@@ -74,11 +74,15 @@ code {
 
 .view, .view-double {
     width: 5in;
-    height: 2.5in;
     margin: auto;
 }
 
+.view {
+    height: 5in;
+}
+
 .view-double {
+    height: 2.5in;
     display: block;
 }
 
