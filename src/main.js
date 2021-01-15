@@ -48,6 +48,7 @@ let relativeMice = [];
 let skeletons = [];
 let solvers = [];
 let targetPoints = [];
+let targetPointHasMoved = [];
 let elements = [];
 
 function customizeDemo(states)
@@ -61,6 +62,26 @@ function customizeDemo(states)
     // FABRIK, unconstrained
     states[2].method = METHODS.FABRIK;
     // states[2].constrained = true;
+
+    states[3].method = METHODS.CCD;
+    states[4].method = METHODS.FABRIK;
+}
+
+function wrapDemo(states)
+{
+    // Bind demo 3 and 4
+    mouseHelpers[4].userData.binding = {id: 3, helper: mouseHelpers[3]};
+    mouseHelpers[3].userData.binding = {id: 4, helper: mouseHelpers[4]};
+
+    let c1 = scenes[3].userData.camera;
+    let v1 = scenes[3].userData.view;
+    let c2 = scenes[4].userData.camera;
+    let v2 = scenes[4].userData.view;
+
+    let controls1 = new OrbitControls(c1, v2);
+    let controls2 = new OrbitControls(c2, v1);
+    controls1.enablePan = false;
+    controls2.enablePan = false;
 }
 
 function createOneConstraintMiddle(state)
@@ -276,6 +297,8 @@ function init()
         let controls = new OrbitControls(camera, view);
         controls.enablePan = false;
         scene.userData.controls = controls;
+        scene.userData.camera = camera;
+        scene.userData.view = view;
 
         let ambient = new AmbientLight(0x666666);
         scene.add(ambient);
@@ -329,7 +352,10 @@ function init()
         skeletons.push(skeleton);
         solvers.push(solver);
         targetPoints.push(targetPoint);
+        targetPointHasMoved.push(false);
     }
+
+    wrapDemo(states);
 }
 
 function onWindowResize()
@@ -390,13 +416,14 @@ function render()
             updateBonesForward(skeleton);
 
         // Follow cursor
-        else if (state.method !== METHODS.NONE)
+        else if (state.method !== METHODS.NONE && targetPointHasMoved[i])
             updateBonesInverse(skeleton, solver, targetPoint, state);
 
         // renderer.render(scene, camera);
         effect.render(scene, camera);
     }
 
+    targetPointHasMoved.fill(false);
     mouseHasMoved = false;
 }
 
@@ -471,6 +498,16 @@ function onMouseMove(event)
 
         targetPoint.copy(intersects[0].point);
         mouseHelper.position.copy(targetPoint);
+        targetPointHasMoved[i] = true;
+
+        if (mouseHelper.userData.binding)
+        {
+            const j = mouseHelper.userData.binding.id;
+            const helper = mouseHelper.userData.binding.helper;
+            targetPoints[j].copy(targetPoint);
+            targetPointHasMoved[j] = true;
+            helper.position.copy(targetPoint);
+        }
 
         mouseHasMoved = true;
     }

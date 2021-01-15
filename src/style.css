@@ -52,7 +52,7 @@ a {
 }
 
 #info {
-    left: 0px;
+    left: 0;
 }
 
 code {
@@ -74,7 +74,7 @@ code {
 
 .view, .view-double {
     width: 5in;
-    height: 5in;
+    height: 2.5in;
     margin: auto;
 }
 

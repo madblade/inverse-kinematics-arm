@@ -50,7 +50,7 @@
 <!-- CCD demo -->
 <div class="view" id="demo-1">
 </div>
-<p class="legend">Move the cube around with your mouse to see CCD in action. <small>[10 iter.]</small></p>
+<p class="legend">Move the cube around with the mouse to see CCD in action. <small>[10 iter.]</small></p>
 <br/>
 
 <p>
@@ -128,8 +128,9 @@
 
 <p>
     This method has a number of advantages over CCD.
-    It is as smooth, faster as it works in vector space and does not compute angles,
-    and more well-behaved than CCD.
+    It is faster as it works in vector space and does not need to compute angles,
+    and more well-behaved; all the while giving smooth results and being as easy to
+    implement as CCD.
 </p>
 
 <div class="view-double">
@@ -138,6 +139,8 @@
     <div class="view-right" id="demo-4">
     </div>
 </div>
+<p class="legend">CCD (left) and FABRIK (right). <small>[10 iter.]</small></p>
+<br/>
 
 <p>
     As CCD, FABRIK performs locally: it can hit a local optimum
