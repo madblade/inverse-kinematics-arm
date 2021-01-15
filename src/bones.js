@@ -122,8 +122,8 @@ function createSkinnedMesh(sizing)
 
     let skinnedMeshMaterial = new MeshPhongMaterial({
         skinning: true,
-        color: 0x156289,
-        emissive: 0x072534,
+        color: 0x894315,
+        emissive: 0x341007,
         side: DoubleSide,
         flatShading: true,
         // transparent: true,

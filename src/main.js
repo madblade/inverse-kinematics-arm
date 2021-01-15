@@ -29,7 +29,6 @@ let time = 0;
 let canvas;
 let mouseHasMoved = false;
 let mouse = new Vector2();
-let numberOfDemos = 5;
 
 const METHODS = {
     NONE: 0,
@@ -51,6 +50,8 @@ let targetPoints = [];
 let targetPointHasMoved = [];
 let elements = [];
 
+let numberOfDemos = 5;
+
 function customizeDemo(states)
 {
     // Robotic arm presentation
@@ -69,14 +70,20 @@ function customizeDemo(states)
 
 function wrapDemo(states)
 {
-    // Bind demo 3 and 4
-    mouseHelpers[4].userData.binding = {id: 3, helper: mouseHelpers[3]};
-    mouseHelpers[3].userData.binding = {id: 4, helper: mouseHelpers[4]};
+    let id1 = 3;
+    let id2 = 4;
+    bindDemos(id1, id2);
+}
 
-    let c1 = scenes[3].userData.camera;
-    let v1 = scenes[3].userData.view;
-    let c2 = scenes[4].userData.camera;
-    let v2 = scenes[4].userData.view;
+function bindDemos(id1, id2)
+{
+    mouseHelpers[id2].userData.binding = {id: id1, helper: mouseHelpers[id1]};
+    mouseHelpers[id1].userData.binding = {id: id2, helper: mouseHelpers[id2]};
+
+    let c1 = scenes[id1].userData.camera;
+    let v1 = scenes[id1].userData.view;
+    let c2 = scenes[id2].userData.camera;
+    let v2 = scenes[id2].userData.view;
 
     let controls1 = new OrbitControls(c1, v2);
     let controls2 = new OrbitControls(c2, v1);
