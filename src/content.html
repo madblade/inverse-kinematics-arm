@@ -1,9 +1,9 @@
 
 
 <div id="info">
-    <h4>
+    <h2>
         Inverse Kinematics algorithms — WebGL
-    </h4>
+    </h2>
 </div>
 <br/>
 <p>
@@ -20,17 +20,37 @@
 <p>
     While it is easy to compute an analytical solution to the IK problem when the arm
     only contains two bones, it quickly becomes impractical as the number of bones increases.
-    There are multiple ways, however, to numerically solve the IK problem with arbitrary many bones.
+    There are multiple ways, however, to find a numerical, approximate solution with arbitrary many bones.
 </p>
 
 <p>
-    One first method is called <b>CCD</b> (Cyclic Coordinate Descent).
+    One first, very straightforward method is called <b>CCD</b> (Cyclic Coordinate Descent):
 </p>
+<br/>
+<div class="algo">
+    <code>for <var>bone</var>: <var>last</var> &rarr; <var>first</var></code>
+    <br/>
+    <div class="indent-1">
+        <code><var>v<sub>l</sub></var> = vector(<var>bone.base</var>, <var>last.end</var>)</code>
+        <br/>
+        <code><var>v<sub>t</sub></var> = vector(<var>bone.base</var>, <var>target.end</var>)</code>
+        <br/>
+        <code><var>&alpha;</var> = angle(<var>v<sub>l</sub></var>, <var>v<sub>t</sub></var>)</code>
+        <br/>
+        <code><var>n</var> = cross(<var>v<sub>l</sub></var> <var>v<sub>t</sub></var>)</code>
+        <br/>
+        <code>rotate <var>bone</var> around <var>bone.base</var> along <var>n</var> by <var>&alpha;</var></code>
+    </div>
+    <code>repeat</code>
+    <br/>
+</div>
+<p class="legend">Algorithm: one iteration of CCD.</p>
+<br/>
 
 <!-- CCD demo -->
 <div class="view" id="demo-1">
 </div>
-<p class="legend">Move the cube around with your mouse to see CCD in action.</p>
+<p class="legend">Move the cube around with your mouse to see CCD in action. <small>[10 iter.]</small></p>
 <br/>
 
 <p>
@@ -52,14 +72,65 @@
 
 <br/>
 <p>
-    Another method is FABRIK (Forward And Backward Reaching Inverse Kinematics).
+    Another simple, well-documented method is <b>FABRIK</b> (Forward And Backward Reaching Inverse Kinematics):
 </p>
-<div class="view list-item" id="demo-2">
+<br/>
+<div class="algo">
+    <code>// forward pass</code>
+    <br/>
+    <code><var>v<sub>l</sub></var> = unit_vector(<var>last.base</var>, <var>target</var>) &times; last.length</code>
+    <br/>
+    <code>snap <var>last.end</var> to <var>target</var> </code>
+    <br/>
+    <code>snap <var>last.base</var> to <var>last.end</var> - <var>v<sub>l</sub></var> </code>
+    <br/>
+    <code>for <var>bone</var>: <var>last - 1</var> &rarr; <var>first</var></code>
+    <br/>
+    <div class="indent-1">
+        <code><var>next</var> = <var>bone.next</var></code>
+        <br/>
+        <code><var>u<sub>b</sub></var> = unit_vector(<var>bone.base</var>, <var>next.base</var>)</code>
+        <br/>
+        <code>snap <var>bone.end</var> to <var>next.base</var></code>
+        <br/>
+        <code>snap <var>bone.base</var> to <var>bone.end</var> - <var>u<sub>b</sub></var> &times; bone.length</code>
+        <br/>
+    </div>
+    <br/>
+    <code>// backward pass</code>
+    <br/>
+    <code><var>v<sub>f</sub></var> = vector(<var>first.base</var>, <var>first.end</var>)</code>
+    <br/>
+    <code>snap <var>first.base</var> to the robotic arm root</code>
+    <br/>
+    <code>snap <var>first.end</var> to <var>first.base</var> + <var>v<sub>f</sub></var> </code>
+    <br/>
+    <code>for <var>bone</var>: <var>first + 1</var> &rarr; <var>last</var></code>
+    <br/>
+    <div class="indent-1">
+        <code><var>next</var> = <var>bone.next</var></code>
+        <br/>
+        <code><var>u<sub>b</sub></var> = unit_vector(<var>bone.base</var>, <var>next.base</var>)</code>
+        <br/>
+        <code>snap <var>bone.end</var> to <var>bone.base</var> + <var>u<sub>b</sub></var> &times; bone.length</code>
+        <br/>
+    </div>
+    <code>repeat</code>
+    <br/>
 </div>
-</div>
-<p class="legend">The FABRIK algorithm in action.</p>
+<p class="legend">Algorithm: one iteration of FABRIK.</p>
 <br/>
 
+<div class="view list-item" id="demo-2">
+</div>
+<p class="legend">The FABRIK algorithm in action. <small>[10 iter.]</small></p>
+<br/>
+
+<p>
+    This method has a number of advantages over CCD.
+    It is as smooth, faster as it works in vector space and does not compute angles,
+    and more well-behaved than CCD.
+</p>
 
 <div class="view-double">
     <div class="view-left" id="demo-3">

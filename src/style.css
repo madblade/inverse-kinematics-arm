@@ -55,6 +55,23 @@ a {
     left: 0px;
 }
 
+code {
+    font-size: large;
+}
+
+.algo {
+    width: 5in;
+    margin: auto;
+}
+
+.indent-1 {
+    margin-top: 5px;
+    margin-bottom: 5px;
+    margin-left: 10px;
+    padding-left: 15px;
+    border-left: 2px lightgrey solid;
+}
+
 .view, .view-double {
     width: 5in;
     height: 5in;

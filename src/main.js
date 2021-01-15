@@ -336,6 +336,8 @@ function onWindowResize()
 {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
+    sizeUpToDate = false;
+    updateSize();
     // camera.aspect = window.innerWidth / window.innerHeight;
     // camera.updateProjectionMatrix();
     // effect.setSize(window.innerWidth, window.innerHeight);
@@ -398,8 +400,10 @@ function render()
     mouseHasMoved = false;
 }
 
+let sizeUpToDate = false;
 function updateSize()
 {
+    if (sizeUpToDate) return;
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     const width = canvas.clientWidth;
@@ -409,6 +413,7 @@ function updateSize()
         renderer.setSize(width, height, false);
         effect.setSize(width, height, false);
     }
+    sizeUpToDate = true;
 }
 
 // FORWARD KINEMATICS
