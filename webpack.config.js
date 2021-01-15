@@ -14,7 +14,7 @@ module.exports = function(env) {
                 template: './src/index.html',
                 favicon: './favicon.ico',
                 baseUrl: env.development ?
-                    '/' : 'https://madblade.github.io/fancy-terrain/'
+                    '/' : 'https://madblade.github.io/inverse-kinematics-arm/'
             }),
             new webpack.HotModuleReplacementPlugin()
         ],
@@ -32,6 +32,13 @@ module.exports = function(env) {
                     exclude: /node_modules/,
                     use: {
                         loader: 'babel-loader'
+                    }
+                },
+                {
+                    test: /\.html$/,
+                    exclude: /node_modules/,
+                    use: {
+                        loader: 'raw-loader'
                     }
                 },
                 {

@@ -1,5 +1,7 @@
 import './style.css';
 
+import content from './content.html';
+
 import {
     AmbientLight,
     BoxBufferGeometry,
@@ -497,6 +499,12 @@ function updateBonesInverse(skl, slv, targetPoint, state)
         }
     }
 }
+
+
+let html = content;
+let div = document.createElement('div');
+div.innerHTML = html.trim();
+document.getElementById('content').appendChild(div);
 
 // Entry
 init();
