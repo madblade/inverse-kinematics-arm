@@ -63,14 +63,21 @@
 
     On the demo, it also gives some twist to the robotic arm:
     if you repeatedly move the target in circles,
-    the arm will eventually get twisted as a helix
-    (although this problem can be easily solved).
+    the arm will eventually get twisted as a helix.
 </p>
 <p>
-    This is because it works in quaternion space (~i.e. just works with angles),
-    and only looks at the quaternions from the last found solution.
-    This is a local process.
-    A solution to that problem would be to add constraints to the
+    (Note: on the demo, these twists can become quite severe and
+    cause a decrease in the arm’s volume;
+    this is an artifact, known as <emph>candy wrapper</emph>,
+    proper to the skinning algorithm used by three: Linear Blend Skinning)
+</p>
+<p>
+    This is because CCD works in quaternion space (~i.e. just with angles),
+    and only looks at the quaternions from the last found solution;
+    this is a local process.
+    This would be solved by resetting and recomputing quaternions from the bone
+    positions at every new solve.
+    Another possibility would be to add constraints to the
     joint angles, as we will see in just a bit.
 </p>
 <p>
